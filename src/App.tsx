@@ -56,6 +56,7 @@ function App() {
   const monacoRef = useRef<Monaco | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
+  const handleSaveRef = useRef<() => void>(() => {});
   
   const [files, setFiles] = useState<EditorFile[]>([]);
   const [activeFileId, setActiveFileId] = useState<string>('');
@@ -67,7 +68,7 @@ function App() {
     if (saved) {
       try {
         return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
-      } catch (e) {
+      } catch {
         return DEFAULT_SETTINGS;
       }
     }
@@ -186,9 +187,45 @@ function App() {
     return map[ext] || 'plaintext';
   };
 
-  const openFileFromDisk = () => {
-    fileInputRef.current?.click();
-  };
+  const openFileFromDisk = React.useCallback(async () => {
+    try {
+      // @ts-expect-error: File System Access API
+      const [handle] = await window.showOpenFilePicker({
+        types: [
+          {
+            description: 'Markdown / Text Files',
+            accept: {
+              'text/markdown': ['.md'],
+              'text/plain': ['.txt'],
+            },
+          },
+        ],
+        multiple: false
+      });
+      
+      const file = await handle.getFile();
+      const content = await file.text();
+      const newFileId = Date.now().toString();
+      
+      const newFile: EditorFile = {
+        id: newFileId,
+        name: file.name,
+        content: content,
+        savedContent: content,
+        language: getLanguageFromFilename(file.name),
+        handle: handle
+      };
+      
+      setFiles(prev => [...prev, newFile]);
+      setActiveFileId(newFileId);
+      setActiveMenu(null);
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error(err);
+        showToast(t('status.errorOpenFile') || 'ファイルの読み込みに失敗しました。');
+      }
+    }
+  }, [t]);
 
   const openNewFilePalette = () => {
     setNewFileNameInput('');
@@ -200,13 +237,67 @@ function App() {
     return file.content !== (file.savedContent ?? file.content) && file.content !== '';
   };
 
-  const handleSave = React.useCallback(() => {
+  const handleSave = React.useCallback(async () => {
     if (!activeFile) return;
-    setFiles(prev => prev.map(f => 
-      f.id === activeFile.id ? { ...f, savedContent: f.content } : f
-    ));
-    setActiveMenu(null);
-  }, [activeFile]);
+    
+    try {
+      let handle = activeFile.handle;
+      
+      // ハンドルがない（新規ファイルなど）場合は保存ダイアログを表示
+      if (!handle) {
+        try {
+          // @ts-expect-error: File System Access API
+          handle = await window.showSaveFilePicker({
+            suggestedName: activeFile.name,
+            types: [
+              {
+                description: 'Markdown / Text Files',
+                accept: {
+                  'text/markdown': ['.md'],
+                  'text/plain': ['.txt'],
+                },
+              },
+            ],
+          });
+        } catch (err: any) {
+          if (err.name === 'AbortError') return;
+          throw err;
+        }
+      }
+
+      // ファイルの存在確認 & 書き込み
+      let fileExists = true;
+      try {
+        await handle.getFile();
+      } catch {
+        fileExists = false;
+      }
+
+      const writable = await handle.createWritable();
+      await writable.write(activeFile.content);
+      await writable.close();
+
+      // 状態を更新（ハンドルを保持し、savedContentを更新）
+      setFiles(prev => prev.map(f => 
+        f.id === activeFile.id ? { ...f, savedContent: f.content, name: handle.name, handle: handle } : f
+      ));
+      
+      if (fileExists) {
+        showToast(`${handle.name} ${t('status.saved') || 'に保存しました。'}`);
+      } else {
+        showToast(`${t('status.fileNotFound')} ${handle.name}`);
+      }
+      setActiveMenu(null);
+    } catch (err: any) {
+      console.error(err);
+      showToast(t('status.errorSaveFile') || '保存に失敗しました。');
+    }
+  }, [activeFile, t]);
+
+  // handleSaveRef を更新（Monaco Editor の addAction が常に最新の handleSave を参照するため）
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  }, [handleSave]);
 
   const resetChord = () => {
     setIsChordWaiting(false);
@@ -216,7 +307,7 @@ function App() {
     }
   };
 
-  const confirmCreateFile = () => {
+  const confirmCreateFile = async () => {
     let fileName = newFileNameInput.trim();
     if (!fileName) {
       setShowNewFilePalette(false);
@@ -236,20 +327,51 @@ function App() {
       fileName += '.md';
     }
 
-    const newFileId = Date.now().toString();
-    const newFile: EditorFile = {
-      id: newFileId,
-      name: fileName,
-      content: '',
-      savedContent: '',
-      language: getLanguageFromFilename(fileName)
-    };
-    setFiles(prev => [...prev, newFile]);
-    setActiveFileId(newFileId);
     setShowNewFilePalette(false);
     setNewFileNameInput('');
-    if (editorRef.current) {
-      editorRef.current.focus();
+
+    // ローカルにファイルを作成するための保存ダイアログを表示
+    try {
+      // @ts-expect-error: File System Access API
+      const handle = await window.showSaveFilePicker({
+        suggestedName: fileName,
+        types: [
+          {
+            description: 'Markdown / Text Files',
+            accept: {
+              'text/markdown': ['.md'],
+              'text/plain': ['.txt'],
+            },
+          },
+        ],
+      });
+
+      const initialText = `# ようこそ！\n\n上のツールバーから、**太字**や*斜体*などを追加できます。`;
+      // 空の内容でローカルファイルを作成
+      const writable = await handle.createWritable();
+      await writable.write(initialText);
+      await writable.close();
+
+      const newFileId = Date.now().toString();
+      const newFile: EditorFile = {
+        id: newFileId,
+        name: handle.name,
+        content: '',
+        savedContent: '',
+        language: getLanguageFromFilename(handle.name),
+        handle: handle
+      };
+      setFiles(prev => [...prev, newFile]);
+      setActiveFileId(newFileId);
+      showToast(`${handle.name} ${t('status.created') || 'を作成しました。'}`);
+      if (editorRef.current) {
+        editorRef.current.focus();
+      }
+    } catch (err: any) {
+      if (err.name !== 'AbortError') {
+        console.error(err);
+        showToast(t('status.errorSaveFile') || 'ファイルの作成に失敗しました。');
+      }
     }
   };
 
@@ -326,7 +448,7 @@ function App() {
 
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isChordWaiting, handleSave]); // isChordWaiting や handleSave の変化を検知する必要がある
+  }, [isChordWaiting, handleSave, openFileFromDisk]); // isChordWaiting や handleSave, openFileFromDisk の変化を検知する必要がある
 
   // === ペインリサイズ用のイベントハンドラ定義 ===
   // サイドバーの幅変更
@@ -683,7 +805,7 @@ function App() {
         monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS
       ],
       run: function () {
-        handleSave();
+        handleSaveRef.current();
       }
     });
 
@@ -766,17 +888,58 @@ function App() {
     setActiveMenu(null);
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     setIsDraggingOver(false);
     dragCounter.current = 0;
-    const droppedFiles = e.dataTransfer.files;
-    if (droppedFiles.length === 0) return;
-    const file = droppedFiles[0];
-    if (!isSupportedFile(file)) {
-      showToast('エラー: Markdown(.md)またはテキスト(.txt)ファイルのみサポートされています。');
-      return;
+    
+    const items = e.dataTransfer.items;
+    if (!items || items.length === 0) return;
+
+    // 最初の1つだけ処理
+    const item = items[0];
+    if (item.kind !== 'file') return;
+
+    try {
+      // @ts-expect-error: File System Access API
+      const handle = await item.getAsFileSystemHandle();
+      if (!handle || handle.kind !== 'file') {
+        // ハンドルが取得できない場合はフォールバック（従来の挙動）
+        const file = e.dataTransfer.files[0];
+        if (!file || !isSupportedFile(file)) return;
+        readDroppedFile(file);
+        return;
+      }
+
+      const file = await handle.getFile();
+      if (!isSupportedFile(file)) {
+        showToast('エラー: Markdown(.md)またはテキスト(.txt)ファイルのみサポートされています。');
+        return;
+      }
+
+      const content = await file.text();
+      const newFileId = Date.now().toString();
+      const newFile: EditorFile = {
+        id: newFileId,
+        name: file.name,
+        content: content,
+        savedContent: content,
+        language: getLanguageFromFilename(file.name),
+        handle: handle
+      };
+      setFiles(prev => [...prev, newFile]);
+      setActiveFileId(newFileId);
+    } catch (err: any) {
+      console.error(err);
+      // フォールバック
+      const file = e.dataTransfer.files[0];
+      if (file && isSupportedFile(file)) {
+        readDroppedFile(file);
+      }
     }
+  };
+
+  const readDroppedFile = (file: File) => {
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
@@ -822,28 +985,54 @@ function App() {
     const fileToClose = files.find(f => f.id === id);
     if (!fileToClose) return;
 
+    // 未保存の変更がない場合はそのまま閉じる
+    if (!getIsDirty(fileToClose)) {
+      executeClose(id);
+      return;
+    }
 
+    // 未保存の変更がある場合のみ確認パレットを表示
     setShowConfirmPalette({
-      title: 'タブを閉じますか？',
-      message: `'${fileToClose.name}' を閉じようとしています。操作を選択してください。`,
-      onConfirm: () => {
-        // 保存処理（savedContentを現在のcontentで更新）
-        setFiles(prev => prev.map(f => f.id === id ? { ...f, savedContent: f.content } : f));
-        // エクスポートして閉じる（最新の内容を確実に渡す）
-        handleExport(fileToClose.content);
+      title: t('confirm.closeTitle') || 'タブを閉じますか？',
+      message: `'${fileToClose.name}' ${t('confirm.unsavedMessage') || 'には未保存の変更があります。'}`,
+      onConfirm: async () => {
+        // 保存して閉じる
+        try {
+          const handle = fileToClose.handle;
+          if (handle) {
+            let closeFileExists = true;
+            try {
+              await handle.getFile();
+            } catch {
+              closeFileExists = false;
+            }
+
+            const writable = await handle.createWritable();
+            await writable.write(fileToClose.content);
+            await writable.close();
+
+            if (closeFileExists) {
+              showToast(`${fileToClose.name} ${t('status.saved')}`);
+            } else {
+              showToast(`${t('status.fileNotFound')} ${handle.name}`);
+            }
+          } else {
+            handleExport(fileToClose.content);
+          }
+        } catch (err) {
+          console.error(err);
+          showToast(t('status.errorSaveFile') || '保存に失敗しました。');
+        }
         executeClose(id);
         setShowConfirmPalette(null);
       },
       onDeny: () => {
-        // 保存も何もせずに閉じる
+        // 保存せずに閉じる
         executeClose(id);
         setShowConfirmPalette(null);
       },
       onCancel: () => setShowConfirmPalette(null)
     });
-
-    // 確認プロンプトを出した後は、ここで処理を中断してユーザーの入力を待つ
-    return;
   };
 
   const executeClose = (id: string) => {
@@ -1257,14 +1446,14 @@ function App() {
             <div className="quickpick-list" style={{ maxHeight: 'none' }}>
               <div className="quickpick-item" onClick={showConfirmPalette.onConfirm}>
                 <div className="quickpick-item-info">
-                  <div className="quickpick-item-label">{t('confirm.exportAndClose')}</div>
-                  <div className="quickpick-item-desc">{t('confirm.exportAndCloseDesc')}</div>
+                  <div className="quickpick-item-label">{t('confirm.saveAndClose')}</div>
+                  <div className="quickpick-item-desc">{t('confirm.saveAndCloseDesc')}</div>
                 </div>
               </div>
               <div className="quickpick-item" onClick={showConfirmPalette.onDeny}>
                 <div className="quickpick-item-info">
-                  <div className="quickpick-item-label" style={{ color: 'var(--accent-color)' }}>{t('confirm.closeWithoutExport')}</div>
-                  <div className="quickpick-item-desc">{t('confirm.closeWithoutExportDesc')}</div>
+                  <div className="quickpick-item-label" style={{ color: 'var(--accent-color)' }}>{t('confirm.closeWithoutSave')}</div>
+                  <div className="quickpick-item-desc">{t('confirm.closeWithoutSaveDesc')}</div>
                 </div>
               </div>
               <div className="context-menu-separator" style={{ margin: 0 }} />
