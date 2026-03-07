@@ -31,6 +31,7 @@ import 'remark-github-blockquote-alert/alert.css';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './index.css';
+import logoImage from './assets/vite.svg';
 
 type Theme = 'system' | 'light' | 'dark';
 type SidebarTab = 'explorer' | 'outline' | 'docs';
@@ -1318,7 +1319,7 @@ function App() {
         <div className="titlebar-section">
           {/* vscode風アプリアイコンの代用 */}
           <div style={{ padding: '0 8px', display: 'flex' }}>
-            <img src="/vite.svg" alt="App Icon" style={{ width: 16, height: 16 }} />
+            <img src={logoImage} alt="App Icon" style={{ width: 16, height: 16 }} />
           </div>
 
           {/* メニューバー */}
@@ -2374,7 +2375,7 @@ function App() {
                         }}
                       >
                         <div className="empty-state-logo">
-                          <img src="/vite.svg" alt="App Logo" />
+                          <img src={logoImage} alt="App Logo" />
                         </div>
                         <div className="empty-state-shortcuts">
                           <div className="shortcut-row">
