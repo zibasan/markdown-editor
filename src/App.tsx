@@ -5,7 +5,22 @@ import loader from '@monaco-editor/loader';
 import type { Monaco } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 import { Toolbar } from './components/Toolbar';
-import { Search, Sun, Moon, Monitor, Files, List as ListIcon, Settings, Plus, X, Check, FileText, FolderOpen, BookOpen, Languages } from 'lucide-react';
+import {
+  Search,
+  Sun,
+  Moon,
+  Monitor,
+  Files,
+  List as ListIcon,
+  Settings,
+  Plus,
+  X,
+  Check,
+  FileText,
+  FolderOpen,
+  BookOpen,
+  Languages,
+} from 'lucide-react';
 import type { EditorFile, EditorSettings } from './types';
 import { DEFAULT_SETTINGS } from './types';
 import { createT } from './i18n';
@@ -31,20 +46,20 @@ interface OutlineItem {
 function configureMonacoLocale(lang: 'ja' | 'en') {
   loader.config({
     paths: {
-      vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.43.0/min/vs'
+      vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.43.0/min/vs',
     },
     'vs/nls': {
       availableLanguages: {
-        '*': lang === 'en' ? '' : lang
-      }
-    }
+        '*': lang === 'en' ? '' : lang,
+      },
+    },
   });
 }
 // 初期設定は localStorage から言語を読み取って適用
 (() => {
   try {
     const saved = localStorage.getItem('editor_settings');
-    const lang = saved ? (JSON.parse(saved).language || 'ja') : 'ja';
+    const lang = saved ? JSON.parse(saved).language || 'ja' : 'ja';
     configureMonacoLocale(lang);
   } catch {
     configureMonacoLocale('ja');
@@ -57,7 +72,7 @@ function App() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
   const handleSaveRef = useRef<() => void>(() => {});
-  
+
   const [files, setFiles] = useState<EditorFile[]>([]);
   const [activeFileId, setActiveFileId] = useState<string>('');
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('explorer');
@@ -108,7 +123,9 @@ function App() {
   }, [theme]);
 
   // コンテキストメニュー用のState (fileIdがない場合は余白右クリック)
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; fileId?: string } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; fileId?: string } | null>(
+    null
+  );
   // リネーム(名前の変更)用のState
   const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -120,14 +137,16 @@ function App() {
   // v12: QuickPickパレット（言語選択）用のState
   const [showLanguagePalette, setShowLanguagePalette] = useState(false);
   const [languageSearch, setLanguageSearch] = useState('');
-  const [availableLanguages, setAvailableLanguages] = useState<{ id: string; aliases?: string[] }[]>([]);
+  const [availableLanguages, setAvailableLanguages] = useState<
+    { id: string; aliases?: string[] }[]
+  >([]);
   const languageInputRef = useRef<HTMLInputElement>(null);
 
   // v16: 新規ファイル作成パレット用のState
   const [showNewFilePalette, setShowNewFilePalette] = useState(false);
   const [newFileNameInput, setNewFileNameInput] = useState('');
   const newFileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // v11: D&Dステータスやトースト
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
@@ -139,8 +158,8 @@ function App() {
     title: string;
     message?: string;
     onConfirm: () => void; // 保存して閉じる
-    onDeny: () => void;    // 保存せずに閉じる
-    onCancel: () => void;  // キャンセル
+    onDeny: () => void; // 保存せずに閉じる
+    onCancel: () => void; // キャンセル
   } | null>(null);
 
   // v18: ステータスバー用エディタ情報
@@ -148,10 +167,10 @@ function App() {
   const [selectionCount, setSelectionCount] = useState(0);
   const [eolMode, setEolMode] = useState<'LF' | 'CRLF'>('LF');
 
-  const activeFile = files.find(f => f.id === activeFileId);
+  const activeFile = files.find((f) => f.id === activeFileId);
 
   // === 主要な操作関数 (ホイスティング対策で上部に配置) ===
-  
+
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 4000);
@@ -165,24 +184,33 @@ function App() {
   const getLanguageFromFilename = (filename: string): string => {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
     const map: Record<string, string> = {
-      md: 'markdown', markdown: 'markdown',
-      ts: 'typescript', tsx: 'typescript',
-      js: 'javascript', jsx: 'javascript',
+      md: 'markdown',
+      markdown: 'markdown',
+      ts: 'typescript',
+      tsx: 'typescript',
+      js: 'javascript',
+      jsx: 'javascript',
       json: 'json',
-      html: 'html', htm: 'html',
+      html: 'html',
+      htm: 'html',
       css: 'css',
       py: 'python',
       java: 'java',
-      c: 'cpp', cpp: 'cpp', h: 'cpp', hpp: 'cpp',
+      c: 'cpp',
+      cpp: 'cpp',
+      h: 'cpp',
+      hpp: 'cpp',
       cs: 'csharp',
       go: 'go',
       rs: 'rust',
       php: 'php',
       rb: 'ruby',
       xml: 'xml',
-      yaml: 'yaml', yml: 'yaml',
-      sh: 'shell', bash: 'shell',
-      sql: 'sql'
+      yaml: 'yaml',
+      yml: 'yaml',
+      sh: 'shell',
+      bash: 'shell',
+      sql: 'sql',
     };
     return map[ext] || 'plaintext';
   };
@@ -200,23 +228,23 @@ function App() {
             },
           },
         ],
-        multiple: false
+        multiple: false,
       });
-      
+
       const file = await handle.getFile();
       const content = await file.text();
       const newFileId = Date.now().toString();
-      
+
       const newFile: EditorFile = {
         id: newFileId,
         name: file.name,
         content: content,
         savedContent: content,
         language: getLanguageFromFilename(file.name),
-        handle: handle
+        handle: handle,
       };
-      
-      setFiles(prev => [...prev, newFile]);
+
+      setFiles((prev) => [...prev, newFile]);
       setActiveFileId(newFileId);
       setActiveMenu(null);
     } catch (err: any) {
@@ -239,10 +267,10 @@ function App() {
 
   const handleSave = React.useCallback(async () => {
     if (!activeFile) return;
-    
+
     try {
       let handle = activeFile.handle;
-      
+
       // ハンドルがない（新規ファイルなど）場合は保存ダイアログを表示
       if (!handle) {
         try {
@@ -278,10 +306,14 @@ function App() {
       await writable.close();
 
       // 状態を更新（ハンドルを保持し、savedContentを更新）
-      setFiles(prev => prev.map(f => 
-        f.id === activeFile.id ? { ...f, savedContent: f.content, name: handle.name, handle: handle } : f
-      ));
-      
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === activeFile.id
+            ? { ...f, savedContent: f.content, name: handle.name, handle: handle }
+            : f
+        )
+      );
+
       if (fileExists) {
         showToast(`${handle.name} ${t('status.saved') || 'に保存しました。'}`);
       } else {
@@ -313,7 +345,7 @@ function App() {
       setShowNewFilePalette(false);
       return;
     }
-    
+
     // 拡張子のチェック
     const hasExtension = fileName.includes('.');
     if (hasExtension) {
@@ -359,9 +391,9 @@ function App() {
         content: '',
         savedContent: '',
         language: getLanguageFromFilename(handle.name),
-        handle: handle
+        handle: handle,
       };
-      setFiles(prev => [...prev, newFile]);
+      setFiles((prev) => [...prev, newFile]);
       setActiveFileId(newFileId);
       showToast(`${handle.name} ${t('status.created') || 'を作成しました。'}`);
       if (editorRef.current) {
@@ -419,7 +451,7 @@ function App() {
       // 2. リーダーキー待機中の処理
       if (isChordWaiting) {
         const key = e.key.toLowerCase();
-        
+
         // Ctrl+K -> N: 新規作成
         if (key === 'n') {
           e.preventDefault();
@@ -438,7 +470,7 @@ function App() {
         e.preventDefault();
         openFileFromDisk();
       }
-      
+
       // Ctrl+S: 保存
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
@@ -474,8 +506,11 @@ function App() {
     const startX = e.clientX;
     const startWidth = previewWidth;
     const handleMouseMove = (moveEvent: MouseEvent) => {
-      const delta = startX - moveEvent.clientX; 
-      const newWidth = Math.max(200, Math.min(window.innerWidth - sidebarWidth - 100, startWidth + delta));
+      const delta = startX - moveEvent.clientX;
+      const newWidth = Math.max(
+        200,
+        Math.min(window.innerWidth - sidebarWidth - 100, startWidth + delta)
+      );
       setPreviewWidth(newWidth);
     };
     const handleMouseUp = () => {
@@ -489,24 +524,24 @@ function App() {
   // 現在のアクティブファイルから見出し（#）を抽出する
   const outlineItems = useMemo(() => {
     if (!activeFile) return [];
-    
+
     const lines = activeFile.content.split(/\r?\n/);
     const items: OutlineItem[] = [];
-    
+
     // Markdownの見出し（行の先頭が1〜6個の#で始まり、その後にスペースがある）を判定
     const headingRegex = /^(#{1,6})\s+(.+)$/;
-    
+
     lines.forEach((line, index) => {
       const match = line.match(headingRegex);
       if (match) {
         items.push({
           level: match[1].length, // #の数が見出しレベル
           text: match[2],
-          line: index + 1 // エディターの行番号は1始まり
+          line: index + 1, // エディターの行番号は1始まり
         });
       }
     });
-    
+
     return items;
   }, [activeFile]);
 
@@ -519,7 +554,7 @@ function App() {
         setActiveTheme(theme);
       }
     };
-    
+
     updateTheme();
     document.documentElement.setAttribute('data-theme', activeTheme);
 
@@ -563,9 +598,9 @@ function App() {
       folding: {
         markers: {
           start: new RegExp('^\\s*<!--\\s*#region\\b.*-->'),
-          end: new RegExp('^\\s*<!--\\s*#endregion\\b.*-->')
-        }
-      }
+          end: new RegExp('^\\s*<!--\\s*#endregion\\b.*-->'),
+        },
+      },
     });
 
     // === カスタムテーマ(VSCode Dark+風シンタックスハイライト)の定義 ===
@@ -606,12 +641,12 @@ function App() {
         { token: 'tag.md', foreground: '808080' },
         { token: 'attribute.name.html.md', foreground: '9cdcfe' },
         { token: 'string.html.md', foreground: 'ce9178' },
-        // 水平線 (***) 
+        // 水平線 (***)
         { token: 'meta.separator.md', foreground: '608b4e' },
         // エスケープ文字
         { token: 'escape.md', foreground: 'd7ba7d' },
       ],
-      colors: {}
+      colors: {},
     });
 
     monacoInstance.editor.defineTheme('vscode-markdown-light', {
@@ -640,7 +675,7 @@ function App() {
         { token: 'meta.separator.md', foreground: '008000' },
         { token: 'escape.md', foreground: 'ee0000' },
       ],
-      colors: {}
+      colors: {},
     });
 
     // === Monarchトークナイザーの拡張 (引用符のハイライト) ===
@@ -662,36 +697,45 @@ function App() {
           [/\[.*\]\(.*\)/, 'string.link.md'],
           [/^>.*$/, 'comment.md'],
           [/^(\s*[-+*]|\s*\d+\.)\s/, 'keyword.md'],
-        ]
-      }
+        ],
+      },
     } as any);
   };
 
   // === エディターがマウントされたイベントハンドラ ===
-  const handleEditorDidMount = (editorInstance: editor.IStandaloneCodeEditor, monacoInstance: Monaco) => {
+  const handleEditorDidMount = (
+    editorInstance: editor.IStandaloneCodeEditor,
+    monacoInstance: Monaco
+  ) => {
     editorRef.current = editorInstance;
     monacoRef.current = monacoInstance;
-    
+
     // サポートされている言語（MarkdownとPlain Text）のみをフィルタリングして取得
     const langs = monacoInstance.languages.getLanguages();
-    let filtered = langs.filter((l: any) => 
-      l.id.toLowerCase() === 'markdown' || 
-      l.id.toLowerCase() === 'plaintext' ||
-      (l.aliases && l.aliases.some((a: string) => a.toLowerCase() === 'markdown' || a.toLowerCase() === 'plain text'))
+    let filtered = langs.filter(
+      (l: any) =>
+        l.id.toLowerCase() === 'markdown' ||
+        l.id.toLowerCase() === 'plaintext' ||
+        (l.aliases &&
+          l.aliases.some(
+            (a: string) => a.toLowerCase() === 'markdown' || a.toLowerCase() === 'plain text'
+          ))
     );
 
     // 万が一フィルタリングで何も取得できなかった場合のフォールバック
     if (filtered.length === 0) {
       filtered = [
         { id: 'markdown', aliases: ['Markdown'] },
-        { id: 'plaintext', aliases: ['Plain Text'] }
+        { id: 'plaintext', aliases: ['Plain Text'] },
       ] as any;
     }
-    
-    setAvailableLanguages(filtered.map((l: any) => ({ 
-      id: l.id, 
-      aliases: (l as any).aliases // Monaco公式型定義にaliasesがない場合があるため一時的にキャスト
-    })));
+
+    setAvailableLanguages(
+      filtered.map((l: any) => ({
+        id: l.id,
+        aliases: (l as any).aliases, // Monaco公式型定義にaliasesがない場合があるため一時的にキャスト
+      }))
+    );
     const model = editorInstance.getModel();
     if (model) {
       // 常にデフォルトを LF (0) に固定する
@@ -716,7 +760,7 @@ function App() {
         { open: '`', close: '`' },
       ],
     });
-    
+
     // コマンドパレットにアクションを追加 (言語モードの変更)
     editorInstance.addAction({
       id: 'change-language-mode-action',
@@ -724,7 +768,7 @@ function App() {
       keybindings: [],
       run: function () {
         setShowLanguagePalette(true);
-      }
+      },
     });
 
     // コマンドパレットにアクションを追加 (テーマ切り替え)
@@ -735,8 +779,8 @@ function App() {
       contextMenuGroupId: 'navigation',
       contextMenuOrder: 1.5,
       run: function () {
-        setTheme((prev: Theme) => prev === 'dark' ? 'light' : 'dark');
-      }
+        setTheme((prev: Theme) => (prev === 'dark' ? 'light' : 'dark'));
+      },
     });
 
     // コマンドパレットにアクションを追加 (言語の変更 / Change Language)
@@ -746,7 +790,7 @@ function App() {
       keybindings: [],
       run: function () {
         setShowLangSwitchPalette(true);
-      }
+      },
     });
 
     // === エディタ情報更新リスナー (v18) ===
@@ -778,60 +822,52 @@ function App() {
       id: 'toggle-preview-action',
       label: 'Markdown: Toggle Preview',
       keybindings: [
-        monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyMod.Shift | monacoInstance.KeyCode.KeyV
+        monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyMod.Shift | monacoInstance.KeyCode.KeyV,
       ],
       run: function () {
-        setShowPreview(prev => !prev);
-      }
+        setShowPreview((prev) => !prev);
+      },
     });
 
     // コマンドパレットにアクションを追加 (新規ファイル作成 Ctrl+N)
     editorInstance.addAction({
       id: 'new-file-palette-action',
       label: 'File: New File...',
-      keybindings: [
-        monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyN
-      ],
+      keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyN],
       run: function () {
         openNewFilePalette();
-      }
+      },
     });
 
     // コマンドパレットにアクションを追加 (ファイル保存 Ctrl+S)
     editorInstance.addAction({
       id: 'save-file-action',
       label: 'File: Save',
-      keybindings: [
-        monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS
-      ],
+      keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS],
       run: function () {
         handleSaveRef.current();
-      }
+      },
     });
 
     // カスタムコマンド: 設定を開く
     editorInstance.addAction({
       id: 'open-settings-action',
       label: 'Preferences: Open Settings',
-      keybindings: [
-        monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.US_COMMA
-      ],
+      keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.US_COMMA],
       run: function () {
         setIsSettingsOpen(true);
         setShowSettingsTab(true);
-      }
+      },
     });
 
     // カスタムコマンド: ファイルを開く
     editorInstance.addAction({
       id: 'open-file-action',
       label: 'File: Open File...',
-      keybindings: [
-        monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyO
-      ],
+      keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyO],
       run: function () {
         openFileFromDisk();
-      }
+      },
     });
 
     // カスタムコマンド: すべてのファイルを閉じる (初期画面に戻る)
@@ -843,7 +879,7 @@ function App() {
         setFiles([]);
         setActiveFileId('');
         setIsSettingsOpen(false);
-      }
+      },
     });
 
     // コマンドパレット呼び出し用にフォーカス
@@ -852,13 +888,10 @@ function App() {
 
   const handleEditorChange = (value: string | undefined) => {
     if (value === undefined || !activeFileId) return;
-    setFiles(prevFiles => prevFiles.map(file => 
-      file.id === activeFileId ? { ...file, content: value } : file
-    ));
+    setFiles((prevFiles) =>
+      prevFiles.map((file) => (file.id === activeFileId ? { ...file, content: value } : file))
+    );
   };
-
-
-
 
   const handleFileOpen = (e: React.ChangeEvent<HTMLInputElement>) => {
     const fileList = e.target.files;
@@ -878,9 +911,9 @@ function App() {
         name: file.name,
         content: content,
         savedContent: content,
-        language: getLanguageFromFilename(file.name)
+        language: getLanguageFromFilename(file.name),
       };
-      setFiles(prev => [...prev, newFile]);
+      setFiles((prev) => [...prev, newFile]);
       setActiveFileId(newFileId);
     };
     reader.readAsText(file);
@@ -892,7 +925,7 @@ function App() {
     e.preventDefault();
     setIsDraggingOver(false);
     dragCounter.current = 0;
-    
+
     const items = e.dataTransfer.items;
     if (!items || items.length === 0) return;
 
@@ -925,9 +958,9 @@ function App() {
         content: content,
         savedContent: content,
         language: getLanguageFromFilename(file.name),
-        handle: handle
+        handle: handle,
       };
-      setFiles(prev => [...prev, newFile]);
+      setFiles((prev) => [...prev, newFile]);
       setActiveFileId(newFileId);
     } catch (err: any) {
       console.error(err);
@@ -949,9 +982,9 @@ function App() {
         name: file.name,
         content: content,
         savedContent: content,
-        language: getLanguageFromFilename(file.name)
+        language: getLanguageFromFilename(file.name),
       };
-      setFiles(prev => [...prev, newFile]);
+      setFiles((prev) => [...prev, newFile]);
       setActiveFileId(newFileId);
     };
     reader.readAsText(file);
@@ -977,12 +1010,10 @@ function App() {
     e.preventDefault();
   };
 
-
-
   const closeFile = (e: React.MouseEvent | null, id: string) => {
     if (e) e.stopPropagation();
-    
-    const fileToClose = files.find(f => f.id === id);
+
+    const fileToClose = files.find((f) => f.id === id);
     if (!fileToClose) return;
 
     // 未保存の変更がない場合はそのまま閉じる
@@ -1031,14 +1062,14 @@ function App() {
         executeClose(id);
         setShowConfirmPalette(null);
       },
-      onCancel: () => setShowConfirmPalette(null)
+      onCancel: () => setShowConfirmPalette(null),
     });
   };
 
   const executeClose = (id: string) => {
-    setFiles(prev => {
-      const newFiles = prev.filter(f => f.id !== id);
-      
+    setFiles((prev) => {
+      const newFiles = prev.filter((f) => f.id !== id);
+
       // 次のアクティブファイルを決定
       if (activeFileId === id) {
         if (newFiles.length > 0) {
@@ -1070,7 +1101,7 @@ function App() {
   // メニューの「名前の変更」
   const handleContextRename = () => {
     if (contextMenu && contextMenu.fileId) {
-      const file = files.find(f => f.id === contextMenu.fileId);
+      const file = files.find((f) => f.id === contextMenu.fileId);
       if (file) {
         setRenamingFileId(contextMenu.fileId);
         setRenameValue(file.name);
@@ -1082,9 +1113,9 @@ function App() {
   // リネーム確定処理
   const commitRename = () => {
     if (renamingFileId && renameValue.trim()) {
-      setFiles(prevFiles => prevFiles.map(f =>
-        f.id === renamingFileId ? { ...f, name: renameValue.trim() } : f
-      ));
+      setFiles((prevFiles) =>
+        prevFiles.map((f) => (f.id === renamingFileId ? { ...f, name: renameValue.trim() } : f))
+      );
     }
     setRenamingFileId(null);
     setRenameValue('');
@@ -1093,7 +1124,7 @@ function App() {
   // メニューの「削除」
   const handleContextDelete = () => {
     if (contextMenu && files.length > 1) {
-      const newFiles = files.filter(f => f.id !== contextMenu.fileId);
+      const newFiles = files.filter((f) => f.id !== contextMenu.fileId);
       setFiles(newFiles);
       if (activeFileId === contextMenu.fileId) {
         setActiveFileId(newFiles[newFiles.length - 1].id);
@@ -1102,7 +1133,12 @@ function App() {
     setContextMenu(null);
   };
 
-  const insertMarkdown = (prefix: string, suffix: string, defaultText: string, insertOnNewLine?: boolean) => {
+  const insertMarkdown = (
+    prefix: string,
+    suffix: string,
+    defaultText: string,
+    insertOnNewLine?: boolean
+  ) => {
     const editor = editorRef.current;
     if (!editor) return;
 
@@ -1124,7 +1160,7 @@ function App() {
           startLineNumber: selection.endLineNumber,
           startColumn: maxCol,
           endLineNumber: selection.endLineNumber,
-          endColumn: maxCol
+          endColumn: maxCol,
         };
         actualPrefix = '\n\n' + prefix;
       }
@@ -1139,7 +1175,7 @@ function App() {
         range: targetRange,
         text: newText,
         forceMoveMarkers: true,
-      }
+      },
     ]);
 
     // フォーカスの復元とカーソル位置調整
@@ -1178,15 +1214,16 @@ function App() {
   const filteredLanguages = useMemo(() => {
     if (!languageSearch.trim()) return availableLanguages;
     const lowerSearch = languageSearch.toLowerCase();
-    return availableLanguages.filter(l => 
-      l.id.toLowerCase().includes(lowerSearch) || 
-      (l.aliases && l.aliases.some(a => a.toLowerCase().includes(lowerSearch)))
+    return availableLanguages.filter(
+      (l) =>
+        l.id.toLowerCase().includes(lowerSearch) ||
+        (l.aliases && l.aliases.some((a) => a.toLowerCase().includes(lowerSearch)))
     );
   }, [availableLanguages, languageSearch]);
 
   const selectLanguage = (langId: string) => {
     if (activeFileId) {
-      setFiles(prev => prev.map(f => f.id === activeFileId ? { ...f, language: langId } : f));
+      setFiles((prev) => prev.map((f) => (f.id === activeFileId ? { ...f, language: langId } : f)));
     }
     setShowLanguagePalette(false);
     setLanguageSearch('');
@@ -1217,8 +1254,6 @@ function App() {
     else if (theme === 'light') setTheme('dark');
     else setTheme('system');
   };
-
-
 
   const toggleEol = () => {
     const newMode = eolMode === 'LF' ? 'CRLF' : 'LF';
@@ -1268,11 +1303,11 @@ function App() {
           <div style={{ padding: '0 8px', display: 'flex' }}>
             <img src="/vite.svg" alt="App Icon" style={{ width: 16, height: 16 }} />
           </div>
-          
+
           {/* メニューバー */}
           <div className="menu-bar">
             {/* ファイル メニュー */}
-            <div 
+            <div
               className={`menu-item ${activeMenu === 'file' ? 'active' : ''}`}
               onClick={() => setActiveMenu(activeMenu === 'file' ? null : 'file')}
               onMouseEnter={() => activeMenu && setActiveMenu('file')}
@@ -1280,21 +1315,48 @@ function App() {
               {t('menu.file')}
               {activeMenu === 'file' && (
                 <div className="menu-dropdown">
-                  <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); openNewFilePalette(); setActiveMenu(null); }}>
+                  <div
+                    className="menu-dropdown-item"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openNewFilePalette();
+                      setActiveMenu(null);
+                    }}
+                  >
                     <span>{t('menu.file.new')}</span>
                     <span className="menu-dropdown-shortcut">Ctrl+K, N</span>
                   </div>
-                  <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); openFileFromDisk(); setActiveMenu(null); }}>
+                  <div
+                    className="menu-dropdown-item"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openFileFromDisk();
+                      setActiveMenu(null);
+                    }}
+                  >
                     <span>{t('menu.file.open')}</span>
                     <span className="menu-dropdown-shortcut">Ctrl+O</span>
                   </div>
                   <div className="menu-dropdown-separator"></div>
-                  <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); handleSave(); }}>
+                  <div
+                    className="menu-dropdown-item"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleSave();
+                    }}
+                  >
                     <span>{t('menu.file.save')}</span>
                     <span className="menu-dropdown-shortcut">Ctrl+S</span>
                   </div>
                   <div className="menu-dropdown-separator"></div>
-                  <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); handleExport(); setActiveMenu(null); }}>
+                  <div
+                    className="menu-dropdown-item"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleExport();
+                      setActiveMenu(null);
+                    }}
+                  >
                     <span>{t('menu.file.export')}</span>
                   </div>
                 </div>
@@ -1302,7 +1364,7 @@ function App() {
             </div>
 
             {/* 編集 メニュー */}
-            <div 
+            <div
               className={`menu-item ${activeMenu === 'edit' ? 'active' : ''}`}
               onClick={() => setActiveMenu(activeMenu === 'edit' ? null : 'edit')}
               onMouseEnter={() => activeMenu && setActiveMenu('edit')}
@@ -1310,11 +1372,23 @@ function App() {
               {t('menu.edit')}
               {activeMenu === 'edit' && (
                 <div className="menu-dropdown">
-                  <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); triggerUndo(); }}>
+                  <div
+                    className="menu-dropdown-item"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerUndo();
+                    }}
+                  >
                     <span>{t('menu.edit.undo')}</span>
                     <span className="menu-dropdown-shortcut">Ctrl+Z</span>
                   </div>
-                  <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); triggerRedo(); }}>
+                  <div
+                    className="menu-dropdown-item"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerRedo();
+                    }}
+                  >
                     <span>{t('menu.edit.redo')}</span>
                     <span className="menu-dropdown-shortcut">Ctrl+Y</span>
                   </div>
@@ -1323,7 +1397,7 @@ function App() {
             </div>
 
             {/* 表示 メニュー */}
-            <div 
+            <div
               className={`menu-item ${activeMenu === 'view' ? 'active' : ''}`}
               onClick={() => setActiveMenu(activeMenu === 'view' ? null : 'view')}
               onMouseEnter={() => activeMenu && setActiveMenu('view')}
@@ -1331,21 +1405,51 @@ function App() {
               {t('menu.view')}
               {activeMenu === 'view' && (
                 <div className="menu-dropdown">
-                  <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); triggerCommandPalette(); setActiveMenu(null); }}>
+                  <div
+                    className="menu-dropdown-item"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      triggerCommandPalette();
+                      setActiveMenu(null);
+                    }}
+                  >
                     <span>{t('menu.view.commandPalette')}</span>
                     <span className="menu-dropdown-shortcut">F1</span>
                   </div>
                   <div className="menu-dropdown-separator"></div>
-                  <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); setShowPreview(!showPreview); setActiveMenu(null); }}>
-                    <span>{showPreview ? t('menu.view.previewClose') : t('menu.view.previewOpen')}</span>
+                  <div
+                    className="menu-dropdown-item"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowPreview(!showPreview);
+                      setActiveMenu(null);
+                    }}
+                  >
+                    <span>
+                      {showPreview ? t('menu.view.previewClose') : t('menu.view.previewOpen')}
+                    </span>
                     <span className="menu-dropdown-shortcut">Ctrl+Shift+V</span>
                   </div>
                   <div className="menu-dropdown-separator"></div>
-                  <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); setShowLangSwitchPalette(true); setActiveMenu(null); }}>
+                  <div
+                    className="menu-dropdown-item"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setShowLangSwitchPalette(true);
+                      setActiveMenu(null);
+                    }}
+                  >
                     <span>{t('menu.view.language')}</span>
                   </div>
                   <div className="menu-dropdown-separator"></div>
-                  <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(true); setActiveMenu(null); }}>
+                  <div
+                    className="menu-dropdown-item"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsSettingsOpen(true);
+                      setActiveMenu(null);
+                    }}
+                  >
                     <span>{t('menu.view.settings')}</span>
                     <span className="menu-dropdown-shortcut">Ctrl+,</span>
                   </div>
@@ -1355,22 +1459,42 @@ function App() {
           </div>
         </div>
         <div className="titlebar-section titlebar-center">
-          <button className="command-palette-trigger" onClick={triggerCommandPalette} data-tooltip={t('titlebar.commandPaletteTooltip')}>
+          <button
+            className="command-palette-trigger"
+            onClick={triggerCommandPalette}
+            data-tooltip={t('titlebar.commandPaletteTooltip')}
+          >
             <Search size={14} />
             <span>{t('titlebar.searchPlaceholder')}</span>
           </button>
         </div>
         <div className="titlebar-section titlebar-right">
-          <button className="theme-toggle-btn" onClick={toggleTheme} data-tooltip-left={`${t('titlebar.themeToggle')} (${theme})`}>
-            {theme === 'system' ? <Monitor size={16} /> : theme === 'light' ? <Sun size={16} /> : <Moon size={16} />}
+          <button
+            className="theme-toggle-btn"
+            onClick={toggleTheme}
+            data-tooltip-left={`${t('titlebar.themeToggle')} (${theme})`}
+          >
+            {theme === 'system' ? (
+              <Monitor size={16} />
+            ) : theme === 'light' ? (
+              <Sun size={16} />
+            ) : (
+              <Moon size={16} />
+            )}
           </button>
         </div>
       </header>
 
       {/* === 言語選択用 QuickPick パレット === */}
       {showLanguagePalette && (
-        <div className="quickpick-overlay" onClick={() => { setShowLanguagePalette(false); setLanguageSearch(''); }}>
-          <div className="quickpick-container" onClick={e => e.stopPropagation()}>
+        <div
+          className="quickpick-overlay"
+          onClick={() => {
+            setShowLanguagePalette(false);
+            setLanguageSearch('');
+          }}
+        >
+          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
             <div className="quickpick-input-wrapper">
               <div className="quickpick-title">{t('langPalette.title')}</div>
               <input
@@ -1379,14 +1503,14 @@ function App() {
                 type="text"
                 placeholder={t('langPalette.placeholder')}
                 value={languageSearch}
-                onChange={e => setLanguageSearch(e.target.value)}
+                onChange={(e) => setLanguageSearch(e.target.value)}
                 onKeyDown={handleLanguagePaletteKeyDown}
               />
             </div>
             <div className="quickpick-list">
-              {filteredLanguages.map(lang => (
-                <div 
-                  key={lang.id} 
+              {filteredLanguages.map((lang) => (
+                <div
+                  key={lang.id}
                   className={`quickpick-item ${activeFile?.language === lang.id ? 'active' : ''}`}
                   onClick={() => selectLanguage(lang.id)}
                 >
@@ -1409,7 +1533,7 @@ function App() {
       {/* === 新規ファイル名入力用パレット (v16) === */}
       {showNewFilePalette && (
         <div className="quickpick-overlay" onClick={() => setShowNewFilePalette(false)}>
-          <div className="quickpick-container" onClick={e => e.stopPropagation()}>
+          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
             <div className="quickpick-input-wrapper">
               <div className="quickpick-title">{t('newFile.title')}</div>
               <input
@@ -1418,7 +1542,7 @@ function App() {
                 type="text"
                 placeholder={t('newFile.placeholder')}
                 value={newFileNameInput}
-                onChange={e => setNewFileNameInput(e.target.value)}
+                onChange={(e) => setNewFileNameInput(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') confirmCreateFile();
                   if (e.key === 'Escape') setShowNewFilePalette(false);
@@ -1426,8 +1550,15 @@ function App() {
                 autoFocus
               />
             </div>
-            <div style={{ padding: '8px 12px', fontSize: '12px', opacity: 0.6, borderTop: '1px solid var(--border-color)' }}>
-                            {t('newFile.hint')}
+            <div
+              style={{
+                padding: '8px 12px',
+                fontSize: '12px',
+                opacity: 0.6,
+                borderTop: '1px solid var(--border-color)',
+              }}
+            >
+              {t('newFile.hint')}
             </div>
           </div>
         </div>
@@ -1436,11 +1567,16 @@ function App() {
       {/* === 確認パレット (保存しますか？ 等) (v17) === */}
       {showConfirmPalette && (
         <div className="quickpick-overlay" onClick={showConfirmPalette.onCancel}>
-          <div className="quickpick-container" onClick={e => e.stopPropagation()}>
-            <div className="quickpick-header" style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}>
+          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
+            <div
+              className="quickpick-header"
+              style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}
+            >
               <div style={{ fontSize: '13px', fontWeight: 600 }}>{showConfirmPalette.title}</div>
               {showConfirmPalette.message && (
-                <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>{showConfirmPalette.message}</div>
+                <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>
+                  {showConfirmPalette.message}
+                </div>
               )}
             </div>
             <div className="quickpick-list" style={{ maxHeight: 'none' }}>
@@ -1452,7 +1588,9 @@ function App() {
               </div>
               <div className="quickpick-item" onClick={showConfirmPalette.onDeny}>
                 <div className="quickpick-item-info">
-                  <div className="quickpick-item-label" style={{ color: 'var(--accent-color)' }}>{t('confirm.closeWithoutSave')}</div>
+                  <div className="quickpick-item-label" style={{ color: 'var(--accent-color)' }}>
+                    {t('confirm.closeWithoutSave')}
+                  </div>
                   <div className="quickpick-item-desc">{t('confirm.closeWithoutSaveDesc')}</div>
                 </div>
               </div>
@@ -1471,15 +1609,15 @@ function App() {
       {/* === 言語切り替えパレット (v35) === */}
       {showLangSwitchPalette && (
         <div className="quickpick-overlay" onClick={() => setShowLangSwitchPalette(false)}>
-          <div className="quickpick-container" onClick={e => e.stopPropagation()}>
+          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
             <div className="quickpick-input-wrapper">
               <div className="quickpick-title">{t('langSwitch.title')}</div>
             </div>
             <div className="quickpick-list" style={{ maxHeight: 'none' }}>
-              <div 
-                className={`quickpick-item ${settings.language === 'ja' ? 'active' : ''}`} 
+              <div
+                className={`quickpick-item ${settings.language === 'ja' ? 'active' : ''}`}
                 onClick={() => {
-                  setSettings({...settings, language: 'ja'});
+                  setSettings({ ...settings, language: 'ja' });
                   configureMonacoLocale('ja');
                   setShowLangSwitchPalette(false);
                 }}
@@ -1487,10 +1625,10 @@ function App() {
                 <Languages size={16} />
                 <span className="quickpick-item-label">{t('langSwitch.ja')}</span>
               </div>
-              <div 
-                className={`quickpick-item ${settings.language === 'en' ? 'active' : ''}`} 
+              <div
+                className={`quickpick-item ${settings.language === 'en' ? 'active' : ''}`}
                 onClick={() => {
-                  setSettings({...settings, language: 'en'});
+                  setSettings({ ...settings, language: 'en' });
                   configureMonacoLocale('en');
                   setShowLangSwitchPalette(false);
                 }}
@@ -1503,7 +1641,7 @@ function App() {
         </div>
       )}
 
-      <main 
+      <main
         className="app-main"
         onDrop={handleDrop}
         onDragOver={handleDragOver}
@@ -1522,32 +1660,35 @@ function App() {
         )}
 
         <div className="activity-bar">
-          <div 
-            className={`activity-icon ${activeSidebarTab === 'explorer' ? 'active' : ''}`} 
+          <div
+            className={`activity-icon ${activeSidebarTab === 'explorer' ? 'active' : ''}`}
             data-tooltip-right={t('activity.explorer')}
             onClick={() => setActiveSidebarTab('explorer')}
           >
             <Files size={24} />
           </div>
-          <div 
-            className={`activity-icon ${activeSidebarTab === 'outline' ? 'active' : ''}`} 
+          <div
+            className={`activity-icon ${activeSidebarTab === 'outline' ? 'active' : ''}`}
             data-tooltip-right={t('activity.outline')}
             onClick={() => setActiveSidebarTab('outline')}
           >
             <ListIcon size={24} />
           </div>
-          <div 
-            className={`activity-icon ${activeSidebarTab === 'docs' ? 'active' : ''}`} 
+          <div
+            className={`activity-icon ${activeSidebarTab === 'docs' ? 'active' : ''}`}
             data-tooltip-right={t('activity.docs')}
             onClick={() => setActiveSidebarTab('docs')}
           >
             <BookOpen size={24} />
           </div>
           <div style={{ flex: 1 }}></div>
-          <div 
-            className={`activity-icon ${(isSettingsOpen || showSettingsTab) ? 'active' : ''}`} 
+          <div
+            className={`activity-icon ${isSettingsOpen || showSettingsTab ? 'active' : ''}`}
             data-tooltip-right={t('activity.settings')}
-            onClick={() => { setIsSettingsOpen(true); setShowSettingsTab(true); }}
+            onClick={() => {
+              setIsSettingsOpen(true);
+              setShowSettingsTab(true);
+            }}
           >
             <Settings size={24} />
           </div>
@@ -1559,22 +1700,54 @@ function App() {
               <div className="sidebar-header">
                 <h3>{t('sidebar.explorer')}</h3>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="sidebar-action-btn" onClick={openNewFilePalette} data-tooltip={t('sidebar.newFile')}>
+                  <button
+                    className="sidebar-action-btn"
+                    onClick={openNewFilePalette}
+                    data-tooltip={t('sidebar.newFile')}
+                  >
                     <Plus size={16} />
                   </button>
-                  <button className="sidebar-action-btn" onClick={openFileFromDisk} data-tooltip={t('sidebar.openFile')}>
+                  <button
+                    className="sidebar-action-btn"
+                    onClick={openFileFromDisk}
+                    data-tooltip={t('sidebar.openFile')}
+                  >
                     <FolderOpen size={16} />
                   </button>
                 </div>
               </div>
             ) : activeSidebarTab === 'outline' ? (
-              <span style={{ padding: '10px 15px', display: 'block', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.8 }}>{t('sidebar.outline')}</span>
+              <span
+                style={{
+                  padding: '10px 15px',
+                  display: 'block',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  opacity: 0.8,
+                }}
+              >
+                {t('sidebar.outline')}
+              </span>
             ) : (
-              <span style={{ padding: '10px 15px', display: 'block', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.8 }}>MARKDOWN DOCS</span>
+              <span
+                style={{
+                  padding: '10px 15px',
+                  display: 'block',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.5px',
+                  opacity: 0.8,
+                }}
+              >
+                MARKDOWN DOCS
+              </span>
             )}
           </div>
-          <div 
-            className="side-bar-content" 
+          <div
+            className="side-bar-content"
             style={{ padding: 0, overflowY: 'auto', flex: 1 }}
             onContextMenu={(e) => {
               // エクスプローラーモードの時だけ余白右クリックを処理
@@ -1586,9 +1759,9 @@ function App() {
           >
             {activeSidebarTab === 'explorer' ? (
               <ul className="explorer-list">
-                {files.map(file => (
-                  <li 
-                    key={file.id} 
+                {files.map((file) => (
+                  <li
+                    key={file.id}
                     className={`explorer-item ${activeFileId === file.id ? 'active' : ''}`}
                     onClick={() => setActiveFileId(file.id)}
                     onContextMenu={(e) => handleContextMenu(e, file.id)}
@@ -1602,20 +1775,39 @@ function App() {
                         onBlur={commitRename}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') commitRename();
-                          if (e.key === 'Escape') { setRenamingFileId(null); setRenameValue(''); }
+                          if (e.key === 'Escape') {
+                            setRenamingFileId(null);
+                            setRenameValue('');
+                          }
                         }}
                         autoFocus
                         onClick={(e) => e.stopPropagation()}
                       />
                     ) : (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flex: 1, minWidth: 0 }}>
-                        <span style={{ fontSize: '13px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          flex: 1,
+                          minWidth: 0,
+                        }}
+                      >
+                        <span
+                          style={{
+                            fontSize: '13px',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            flex: 1,
+                          }}
+                        >
                           {file.name}
                         </span>
                         {getIsDirty(file) && <span className="dirty-marker">*</span>}
                       </div>
                     )}
-                    <button 
+                    <button
                       className="explorer-close-btn"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -1632,8 +1824,8 @@ function App() {
               <div className="outline-list" style={{ padding: '8px 0' }}>
                 {outlineItems.length > 0 ? (
                   outlineItems.map((item, index) => (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className={`outline-item outline-level-${item.level}`}
                       onClick={() => jumpToLine(item.line)}
                       data-tooltip={item.text}
@@ -1642,61 +1834,243 @@ function App() {
                     </div>
                   ))
                 ) : (
-                  <div style={{ padding: '10px 20px', fontSize: '12px', color: 'var(--activity-icon)' }}>
+                  <div
+                    style={{
+                      padding: '10px 20px',
+                      fontSize: '12px',
+                      color: 'var(--activity-icon)',
+                    }}
+                  >
                     {t('sidebar.noHeadings')}
                   </div>
                 )}
               </div>
             ) : (
               // Markdown Docs タブ
-              <div style={{ padding: '12px', fontSize: '13px', lineHeight: 1.6, color: 'var(--text-color)' }}>
-                <p style={{ marginBottom: '16px', fontSize: '12px', opacity: 0.8 }}>{t('docs.intro')}</p>
+              <div
+                style={{
+                  padding: '12px',
+                  fontSize: '13px',
+                  lineHeight: 1.6,
+                  color: 'var(--text-color)',
+                }}
+              >
+                <p style={{ marginBottom: '16px', fontSize: '12px', opacity: 0.8 }}>
+                  {t('docs.intro')}
+                </p>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  
-                  <div className="docs-item" style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}>{t('docs.headings')}</div>
-                    <code style={{ display: 'block', padding: '4px 8px', background: 'var(--input-bg)', borderRadius: '4px', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>
-                      # Heading 1<br/>## Heading 2<br/>### Heading 3
+                  <div
+                    className="docs-item"
+                    style={{
+                      borderBottom: '1px solid var(--sidebar-border)',
+                      paddingBottom: '12px',
+                    }}
+                  >
+                    <div
+                      style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}
+                    >
+                      {t('docs.headings')}
+                    </div>
+                    <code
+                      style={{
+                        display: 'block',
+                        padding: '4px 8px',
+                        background: 'var(--input-bg)',
+                        borderRadius: '4px',
+                        marginBottom: '8px',
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      # Heading 1<br />
+                      ## Heading 2<br />
+                      ### Heading 3
                     </code>
-                    <div className="preview-pane docs-preview" style={{ padding: '8px', border: '1px solid var(--toolbar-border)', borderRadius: '4px', background: 'var(--editor-bg)' }}>
-                      <h1>Heading 1</h1><h2>Heading 2</h2><h3>Heading 3</h3>
+                    <div
+                      className="preview-pane docs-preview"
+                      style={{
+                        padding: '8px',
+                        border: '1px solid var(--toolbar-border)',
+                        borderRadius: '4px',
+                        background: 'var(--editor-bg)',
+                      }}
+                    >
+                      <h1>Heading 1</h1>
+                      <h2>Heading 2</h2>
+                      <h3>Heading 3</h3>
                     </div>
                   </div>
 
-                  <div className="docs-item" style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}>{t('docs.emphasis')}</div>
-                    <code style={{ display: 'block', padding: '4px 8px', background: 'var(--input-bg)', borderRadius: '4px', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>
-                      **Bold**<br/>*Italic*<br/>~~Strikethrough~~
+                  <div
+                    className="docs-item"
+                    style={{
+                      borderBottom: '1px solid var(--sidebar-border)',
+                      paddingBottom: '12px',
+                    }}
+                  >
+                    <div
+                      style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}
+                    >
+                      {t('docs.emphasis')}
+                    </div>
+                    <code
+                      style={{
+                        display: 'block',
+                        padding: '4px 8px',
+                        background: 'var(--input-bg)',
+                        borderRadius: '4px',
+                        marginBottom: '8px',
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      **Bold**
+                      <br />
+                      *Italic*
+                      <br />
+                      ~~Strikethrough~~
                     </code>
-                    <div className="preview-pane docs-preview" style={{ padding: '8px', border: '1px solid var(--toolbar-border)', borderRadius: '4px', background: 'var(--editor-bg)' }}>
-                      <p><strong>Bold</strong><br/><em>Italic</em><br/><del>Strikethrough</del></p>
+                    <div
+                      className="preview-pane docs-preview"
+                      style={{
+                        padding: '8px',
+                        border: '1px solid var(--toolbar-border)',
+                        borderRadius: '4px',
+                        background: 'var(--editor-bg)',
+                      }}
+                    >
+                      <p>
+                        <strong>Bold</strong>
+                        <br />
+                        <em>Italic</em>
+                        <br />
+                        <del>Strikethrough</del>
+                      </p>
                     </div>
                   </div>
 
-                  <div className="docs-item" style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}>{t('docs.lists')}</div>
-                    <code style={{ display: 'block', padding: '4px 8px', background: 'var(--input-bg)', borderRadius: '4px', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>{`- Item 1\n- Item 2\n  - Sub item`}</code>
-                    <div className="preview-pane docs-preview" style={{ padding: '8px', border: '1px solid var(--toolbar-border)', borderRadius: '4px', background: 'var(--editor-bg)' }}>
-                      <ul><li>Item 1</li><li>Item 2<ul><li>Sub item</li></ul></li></ul>
+                  <div
+                    className="docs-item"
+                    style={{
+                      borderBottom: '1px solid var(--sidebar-border)',
+                      paddingBottom: '12px',
+                    }}
+                  >
+                    <div
+                      style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}
+                    >
+                      {t('docs.lists')}
+                    </div>
+                    <code
+                      style={{
+                        display: 'block',
+                        padding: '4px 8px',
+                        background: 'var(--input-bg)',
+                        borderRadius: '4px',
+                        marginBottom: '8px',
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >{`- Item 1\n- Item 2\n  - Sub item`}</code>
+                    <div
+                      className="preview-pane docs-preview"
+                      style={{
+                        padding: '8px',
+                        border: '1px solid var(--toolbar-border)',
+                        borderRadius: '4px',
+                        background: 'var(--editor-bg)',
+                      }}
+                    >
+                      <ul>
+                        <li>Item 1</li>
+                        <li>
+                          Item 2
+                          <ul>
+                            <li>Sub item</li>
+                          </ul>
+                        </li>
+                      </ul>
                     </div>
                   </div>
 
-                  <div className="docs-item" style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}>{t('docs.codeBlock')}</div>
-                    <code style={{ display: 'block', padding: '4px 8px', background: 'var(--input-bg)', borderRadius: '4px', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>
-                      ```javascript<br/>const foo = 'bar';<br/>```
+                  <div
+                    className="docs-item"
+                    style={{
+                      borderBottom: '1px solid var(--sidebar-border)',
+                      paddingBottom: '12px',
+                    }}
+                  >
+                    <div
+                      style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}
+                    >
+                      {t('docs.codeBlock')}
+                    </div>
+                    <code
+                      style={{
+                        display: 'block',
+                        padding: '4px 8px',
+                        background: 'var(--input-bg)',
+                        borderRadius: '4px',
+                        marginBottom: '8px',
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      ```javascript
+                      <br />
+                      const foo = 'bar';
+                      <br />
+                      ```
                     </code>
-                    <div className="preview-pane docs-preview" style={{ padding: '8px', border: '1px solid var(--toolbar-border)', borderRadius: '4px', background: 'var(--editor-bg)' }}>
-                      <pre style={{ margin: 0, padding: '4px' }}><code><span style={{ color: '#569cd6' }}>const</span> foo = <span style={{ color: '#ce9178' }}>'bar'</span>;</code></pre>
+                    <div
+                      className="preview-pane docs-preview"
+                      style={{
+                        padding: '8px',
+                        border: '1px solid var(--toolbar-border)',
+                        borderRadius: '4px',
+                        background: 'var(--editor-bg)',
+                      }}
+                    >
+                      <pre style={{ margin: 0, padding: '4px' }}>
+                        <code>
+                          <span style={{ color: '#569cd6' }}>const</span> foo ={' '}
+                          <span style={{ color: '#ce9178' }}>'bar'</span>;
+                        </code>
+                      </pre>
                     </div>
                   </div>
 
-                  <div className="docs-item" style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}>
-                    <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}>{t('docs.alerts')}</div>
-                    <code style={{ display: 'block', padding: '4px 8px', background: 'var(--input-bg)', borderRadius: '4px', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>
-                      &gt; [!NOTE]<br/>&gt; Content here
+                  <div
+                    className="docs-item"
+                    style={{
+                      borderBottom: '1px solid var(--sidebar-border)',
+                      paddingBottom: '12px',
+                    }}
+                  >
+                    <div
+                      style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}
+                    >
+                      {t('docs.alerts')}
+                    </div>
+                    <code
+                      style={{
+                        display: 'block',
+                        padding: '4px 8px',
+                        background: 'var(--input-bg)',
+                        borderRadius: '4px',
+                        marginBottom: '8px',
+                        whiteSpace: 'pre-wrap',
+                      }}
+                    >
+                      &gt; [!NOTE]
+                      <br />
+                      &gt; Content here
                     </code>
-                    <div className="preview-pane docs-preview" style={{ padding: '8px', border: '1px solid var(--toolbar-border)', borderRadius: '4px', background: 'var(--editor-bg)' }}>
+                    <div
+                      className="preview-pane docs-preview"
+                      style={{
+                        padding: '8px',
+                        border: '1px solid var(--toolbar-border)',
+                        borderRadius: '4px',
+                        background: 'var(--editor-bg)',
+                      }}
+                    >
                       <ReactMarkdown remarkPlugins={[remarkGfm, remarkAlert]}>
                         {`> [!NOTE]\n> Note content\n\n> [!WARNING]\n> Warning content`}
                       </ReactMarkdown>
@@ -1704,79 +2078,94 @@ function App() {
                   </div>
 
                   <div style={{ fontSize: '12px', opacity: 0.7, paddingTop: '8px' }}>
-                    {t('docs.reference')}<a href="https://www.tohoho-web.com/ex/markdown.html" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)' }}>{t('docs.referenceLink')}</a>{t('docs.referenceSuffix')}
+                    {t('docs.reference')}
+                    <a
+                      href="https://www.tohoho-web.com/ex/markdown.html"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ color: 'var(--accent-color)' }}
+                    >
+                      {t('docs.referenceLink')}
+                    </a>
+                    {t('docs.referenceSuffix')}
                   </div>
-
                 </div>
               </div>
             )}
           </div>
         </div>
-        <div className="resizer-x" onMouseDown={startResizingSidebar} title={t('resizer.tooltip')} />
+        <div
+          className="resizer-x"
+          onMouseDown={startResizingSidebar}
+          title={t('resizer.tooltip')}
+        />
         <div className="editor-container">
           <div className="tabs-container">
-          {files.map(file => {
-            return (
-              <div 
-                key={file.id} 
-                className={`editor-tab ${!isSettingsOpen && file.id === activeFileId ? 'active' : ''}`}
-                onClick={() => { setActiveFileId(file.id); setIsSettingsOpen(false); }}
+            {files.map((file) => {
+              return (
+                <div
+                  key={file.id}
+                  className={`editor-tab ${!isSettingsOpen && file.id === activeFileId ? 'active' : ''}`}
+                  onClick={() => {
+                    setActiveFileId(file.id);
+                    setIsSettingsOpen(false);
+                  }}
+                >
+                  <FileText size={14} />
+                  <span className="tab-title">{file.name}</span>
+                  {getIsDirty(file) && <span className="dirty-marker">*</span>}
+                  <button
+                    className="tab-close-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      closeFile(e, file.id);
+                    }}
+                    data-tooltip="閉じる"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              );
+            })}
+            {/* 設定タブ */}
+            {showSettingsTab && (
+              <div
+                className={`editor-tab ${isSettingsOpen ? 'active' : ''}`}
+                onClick={() => setIsSettingsOpen(true)}
               >
-                <FileText size={14} />
-                <span className="tab-title">
-                  {file.name}
-                </span>
-                {getIsDirty(file) && <span className="dirty-marker">*</span>}
-                <button 
+                <Settings size={14} />
+                <span className="tab-title">設定</span>
+                <button
                   className="tab-close-btn"
                   onClick={(e) => {
                     e.stopPropagation();
-                    closeFile(e, file.id);
+                    setIsSettingsOpen(false);
+                    setShowSettingsTab(false);
                   }}
                   data-tooltip="閉じる"
                 >
                   <X size={14} />
                 </button>
               </div>
-            );
-          })}
-          {/* 設定タブ */}
-          {showSettingsTab && (
-            <div 
-              className={`editor-tab ${isSettingsOpen ? 'active' : ''}`}
-              onClick={() => setIsSettingsOpen(true)}
-            >
-              <Settings size={14} />
-              <span className="tab-title">設定</span>
-              <button 
-                className="tab-close-btn"
-                onClick={(e) => { 
-                  e.stopPropagation(); 
-                  setIsSettingsOpen(false);
-                  setShowSettingsTab(false);
-                }}
-                data-tooltip="閉じる"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          )}
+            )}
           </div>
 
           {/* 設定タブが開いていない時、かつファイルが開いている時のみツールバーを表示 */}
           {!isSettingsOpen && activeFile && (
-            <Toolbar 
-              onInsertMarkdown={insertMarkdown} 
-              onExport={handleExport} 
-              onTogglePreview={() => setShowPreview(!showPreview)} 
-              showPreview={showPreview} 
+            <Toolbar
+              onInsertMarkdown={insertMarkdown}
+              onExport={handleExport}
+              onTogglePreview={() => setShowPreview(!showPreview)}
+              showPreview={showPreview}
               onUndo={handleUndo}
               onRedo={handleRedo}
             />
           )}
-            
+
           {/* モバイル時にプレビューが有効であればクラス preview-mobile-active を付与 */}
-          <div className={`split-view-container ${showPreview && activeFile ? 'preview-mobile-active' : ''}`}>
+          <div
+            className={`split-view-container ${showPreview && activeFile ? 'preview-mobile-active' : ''}`}
+          >
             {isSettingsOpen ? (
               /* === 設定画面 (タブ内表示) === */
               <div className="settings-tab-content">
@@ -1784,13 +2173,13 @@ function App() {
                 <div className="settings-content">
                   <div className="setting-row">
                     <span className="setting-label">{t('settings.language')}</span>
-                    <select 
-                      className="setting-input" 
+                    <select
+                      className="setting-input"
                       style={{ fontFamily: settings.uiFont }}
                       value={settings.language}
-                      onChange={e => {
+                      onChange={(e) => {
                         const newLang = e.target.value as 'ja' | 'en';
-                        setSettings({...settings, language: newLang});
+                        setSettings({ ...settings, language: newLang });
                         configureMonacoLocale(newLang);
                       }}
                     >
@@ -1800,42 +2189,54 @@ function App() {
                   </div>
                   <div className="setting-row">
                     <span className="setting-label">{t('settings.fontSize')}</span>
-                    <input 
-                      type="number" 
-                      className="setting-input" 
-                      value={settings.fontSize} 
-                      onChange={e => setSettings({...settings, fontSize: Number(e.target.value) || 14})}
-                      min={8} max={72}
+                    <input
+                      type="number"
+                      className="setting-input"
+                      value={settings.fontSize}
+                      onChange={(e) =>
+                        setSettings({ ...settings, fontSize: Number(e.target.value) || 14 })
+                      }
+                      min={8}
+                      max={72}
                     />
                   </div>
                   <div className="setting-row">
                     <span className="setting-label">{t('settings.lineHeight')}</span>
-                    <input 
-                      type="number" 
-                      className="setting-input" 
-                      value={settings.lineHeight} 
-                      onChange={e => setSettings({...settings, lineHeight: Number(e.target.value) || 24})}
-                      min={12} max={100}
+                    <input
+                      type="number"
+                      className="setting-input"
+                      value={settings.lineHeight}
+                      onChange={(e) =>
+                        setSettings({ ...settings, lineHeight: Number(e.target.value) || 24 })
+                      }
+                      min={12}
+                      max={100}
                     />
                   </div>
                   <div className="setting-row">
                     <span className="setting-label">{t('settings.minimap')}</span>
-                    <div 
+                    <div
                       className={`toggle-switch ${settings.minimap ? 'active' : ''}`}
-                      onClick={() => setSettings({...settings, minimap: !settings.minimap})}
+                      onClick={() => setSettings({ ...settings, minimap: !settings.minimap })}
                     >
                       <span className="toggle-icon">
-                        {settings.minimap ? <Check size={12} strokeWidth={3} /> : <X size={12} strokeWidth={3} />}
+                        {settings.minimap ? (
+                          <Check size={12} strokeWidth={3} />
+                        ) : (
+                          <X size={12} strokeWidth={3} />
+                        )}
                       </span>
                     </div>
                   </div>
                   <div className="setting-row">
                     <span className="setting-label">{t('settings.wordWrap')}</span>
-                    <select 
-                      className="setting-input" 
+                    <select
+                      className="setting-input"
                       style={{ fontFamily: settings.uiFont }}
                       value={settings.wordWrap}
-                      onChange={e => setSettings({...settings, wordWrap: e.target.value as 'on' | 'off'})}
+                      onChange={(e) =>
+                        setSettings({ ...settings, wordWrap: e.target.value as 'on' | 'off' })
+                      }
                     >
                       <option value="on">{t('settings.wordWrapOn')}</option>
                       <option value="off">{t('settings.wordWrapOff')}</option>
@@ -1843,18 +2244,26 @@ function App() {
                   </div>
                   <div className="setting-row">
                     <span className="setting-label">{t('settings.uiFont')}</span>
-                    <select 
-                      className="setting-input" 
+                    <select
+                      className="setting-input"
                       style={{ width: '180px', fontFamily: settings.uiFont }}
                       value={settings.uiFont}
-                      onChange={e => setSettings({...settings, uiFont: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, uiFont: e.target.value })}
                     >
                       <option value="consolas, 'Courier New', monospace">Consolas</option>
-                      <option value="'Inter', 'Noto Sans JP', sans-serif">Inter & Noto Sans JP</option>
+                      <option value="'Inter', 'Noto Sans JP', sans-serif">
+                        Inter & Noto Sans JP
+                      </option>
                       <option value="'Roboto', 'M PLUS 1p', sans-serif">Roboto & M PLUS 1p</option>
-                      <option value="'Roboto', 'LINE Seed JP', sans-serif">Roboto & LINE Seed JP</option>
-                      <option value="'Google Sans', 'Noto Sans JP', sans-serif">Google Sans & Noto Sans JP</option>
-                      <option value="'Google Sans Code', 'BIZ UDGothic', sans-serif">Google Sans Code & BIZ UD</option>
+                      <option value="'Roboto', 'LINE Seed JP', sans-serif">
+                        Roboto & LINE Seed JP
+                      </option>
+                      <option value="'Google Sans', 'Noto Sans JP', sans-serif">
+                        Google Sans & Noto Sans JP
+                      </option>
+                      <option value="'Google Sans Code', 'BIZ UDGothic', sans-serif">
+                        Google Sans Code & BIZ UD
+                      </option>
                       <option value="'Source Code Pro', monospace">Source Code Pro</option>
                       {settings.language === 'en' && (
                         <>
@@ -1866,18 +2275,28 @@ function App() {
                   </div>
                   <div className="setting-row">
                     <span className="setting-label">{t('settings.editorFont')}</span>
-                    <select 
-                      className="setting-input" 
+                    <select
+                      className="setting-input"
                       style={{ width: '180px', fontFamily: settings.uiFont }}
                       value={settings.editorFont}
-                      onChange={e => setSettings({...settings, editorFont: e.target.value})}
+                      onChange={(e) => setSettings({ ...settings, editorFont: e.target.value })}
                     >
                       <option value="consolas, 'Courier New', monospace">Consolas</option>
-                      <option value="'Fira Code', 'Noto Sans JP', monospace">Fira Code & Noto Sans</option>
-                      <option value="'JetBrains Mono', 'Noto Sans JP', monospace">JetBrains Mono & Noto Sans</option>
-                      <option value="'Roboto Mono', 'BIZ UDGothic', monospace">Roboto Mono & BIZ UD</option>
-                      <option value="'Google Sans Code', 'Noto Sans JP', monospace">Google Sans Code & Noto Sans JP</option>
-                      <option value="'JetBrains Mono', 'BIZ UDGothic', monospace">JetBrains Mono & BIZ UD</option>
+                      <option value="'Fira Code', 'Noto Sans JP', monospace">
+                        Fira Code & Noto Sans
+                      </option>
+                      <option value="'JetBrains Mono', 'Noto Sans JP', monospace">
+                        JetBrains Mono & Noto Sans
+                      </option>
+                      <option value="'Roboto Mono', 'BIZ UDGothic', monospace">
+                        Roboto Mono & BIZ UD
+                      </option>
+                      <option value="'Google Sans Code', 'Noto Sans JP', monospace">
+                        Google Sans Code & Noto Sans JP
+                      </option>
+                      <option value="'JetBrains Mono', 'BIZ UDGothic', monospace">
+                        JetBrains Mono & BIZ UD
+                      </option>
                       {settings.language === 'en' && (
                         <>
                           <option value="'JetBrains Mono', monospace">JetBrains Mono (EN)</option>
@@ -1893,118 +2312,131 @@ function App() {
             ) : (
               /* === エディターペイン === */
               <>
-              <div className="editor-pane">
-                <div className="monaco-wrapper">
-                  {/* activeFileの有無に関わらず、コマンドパレット等を使うために常にエディタを配置する */}
-                  <Editor
-                    height="100%"
-                    defaultLanguage="markdown"
-                    language={activeFile ? (activeFile.language || 'markdown') : 'plaintext'}
-                    theme={activeTheme === 'dark' ? 'vscode-markdown-dark' : 'vscode-markdown-light'}
-                    value={activeFile ? activeFile.content : ''}
-                    onChange={handleEditorChange}
-                    beforeMount={handleEditorWillMount}
-                    onMount={handleEditorDidMount}
-                    options={{
-                      readOnly: !activeFile, // ファイル未選択時は読み取り専用
-                      minimap: { enabled: settings.minimap },
-                      wordWrap: settings.wordWrap,
-                      fontSize: settings.fontSize,
-                      lineHeight: settings.lineHeight,
-                      padding: { top: 16, bottom: 16 },
-                      scrollBeyondLastLine: false,
-                      smoothScrolling: true,
-                      cursorBlinking: 'smooth',
-                      fontFamily: settings.editorFont, // 設定からフォントを反映
-                      autoClosingQuotes: 'always',
-                      autoClosingBrackets: 'always',
-                      autoClosingOvertype: 'always',
-                      autoSurround: 'languageDefined',
-                    }}
-                  />
-                  {!activeFile && (
-                    <div className="empty-state-view" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, backgroundColor: 'var(--editor-bg)' }}>
-                      <div className="empty-state-logo">
-                        <img src="/vite.svg" alt="App Logo" />
-                      </div>
-                      <div className="empty-state-shortcuts">
-                        <div className="shortcut-row">
-                          <span className="shortcut-label">{t('empty.showCommandPalette')}</span>
-                          <span className="shortcut-key">F1</span>
-                        </div>
-                        <div className="shortcut-row">
-                          <span className="shortcut-label">{t('empty.newFile')}</span>
-                          <span className="shortcut-key">Ctrl+K, N</span>
-                        </div>
-                        <div className="shortcut-row">
-                          <span className="shortcut-label">{t('empty.openFile')}</span>
-                          <span className="shortcut-key">Ctrl+O</span>
-                        </div>
-                        <div className="shortcut-row">
-                          <span className="shortcut-label">{t('empty.toggleTheme')}</span>
-                          <span className="shortcut-key">F1 &gt; Theme</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            
-            {showPreview && activeFile && (
-              <>
-                <div className="resizer-x" onMouseDown={startResizingPreview} title={t('resizer.tooltip')} />
-                <div className="preview-pane" style={{ width: previewWidth, flex: 'none' }}>
-                  <ReactMarkdown 
-                    remarkPlugins={[remarkGfm, remarkAlert]}
-                    components={{
-                      code({ className, children, ...props }) {
-                        const match = /language-(\w+)/.exec(className || '');
-                        return match ? (
-                          <SyntaxHighlighter
-                            style={activeTheme === 'dark' ? vscDarkPlus : vs}
-                            language={match[1]}
-                            PreTag="div"
-                          >
-                            {String(children).replace(/\n$/, '')}
-                          </SyntaxHighlighter>
-                        ) : (
-                          <code className={className} {...props}>
-                            {children}
-                          </code>
-                        );
+                <div className="editor-pane">
+                  <div className="monaco-wrapper">
+                    {/* activeFileの有無に関わらず、コマンドパレット等を使うために常にエディタを配置する */}
+                    <Editor
+                      height="100%"
+                      defaultLanguage="markdown"
+                      language={activeFile ? activeFile.language || 'markdown' : 'plaintext'}
+                      theme={
+                        activeTheme === 'dark' ? 'vscode-markdown-dark' : 'vscode-markdown-light'
                       }
-                    }}
-                  >
-                    {activeFile.content}
-                  </ReactMarkdown>
+                      value={activeFile ? activeFile.content : ''}
+                      onChange={handleEditorChange}
+                      beforeMount={handleEditorWillMount}
+                      onMount={handleEditorDidMount}
+                      options={{
+                        readOnly: !activeFile, // ファイル未選択時は読み取り専用
+                        minimap: { enabled: settings.minimap },
+                        wordWrap: settings.wordWrap,
+                        fontSize: settings.fontSize,
+                        lineHeight: settings.lineHeight,
+                        padding: { top: 16, bottom: 16 },
+                        scrollBeyondLastLine: false,
+                        smoothScrolling: true,
+                        cursorBlinking: 'smooth',
+                        fontFamily: settings.editorFont, // 設定からフォントを反映
+                        autoClosingQuotes: 'always',
+                        autoClosingBrackets: 'always',
+                        autoClosingOvertype: 'always',
+                        autoSurround: 'languageDefined',
+                      }}
+                    />
+                    {!activeFile && (
+                      <div
+                        className="empty-state-view"
+                        style={{
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          bottom: 0,
+                          zIndex: 10,
+                          backgroundColor: 'var(--editor-bg)',
+                        }}
+                      >
+                        <div className="empty-state-logo">
+                          <img src="/vite.svg" alt="App Logo" />
+                        </div>
+                        <div className="empty-state-shortcuts">
+                          <div className="shortcut-row">
+                            <span className="shortcut-label">{t('empty.showCommandPalette')}</span>
+                            <span className="shortcut-key">F1</span>
+                          </div>
+                          <div className="shortcut-row">
+                            <span className="shortcut-label">{t('empty.newFile')}</span>
+                            <span className="shortcut-key">Ctrl+K, N</span>
+                          </div>
+                          <div className="shortcut-row">
+                            <span className="shortcut-label">{t('empty.openFile')}</span>
+                            <span className="shortcut-key">Ctrl+O</span>
+                          </div>
+                          <div className="shortcut-row">
+                            <span className="shortcut-label">{t('empty.toggleTheme')}</span>
+                            <span className="shortcut-key">F1 &gt; Theme</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {showPreview && activeFile && (
+                  <>
+                    <div
+                      className="resizer-x"
+                      onMouseDown={startResizingPreview}
+                      title={t('resizer.tooltip')}
+                    />
+                    <div className="preview-pane" style={{ width: previewWidth, flex: 'none' }}>
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkAlert]}
+                        components={{
+                          code({ className, children, ...props }) {
+                            const match = /language-(\w+)/.exec(className || '');
+                            return match ? (
+                              <SyntaxHighlighter
+                                style={activeTheme === 'dark' ? vscDarkPlus : vs}
+                                language={match[1]}
+                                PreTag="div"
+                              >
+                                {String(children).replace(/\n$/, '')}
+                              </SyntaxHighlighter>
+                            ) : (
+                              <code className={className} {...props}>
+                                {children}
+                              </code>
+                            );
+                          },
+                        }}
+                      >
+                        {activeFile.content}
+                      </ReactMarkdown>
+                    </div>
+                  </>
+                )}
               </>
             )}
-          </>
-        )}
-      </div>
-    </div>
+          </div>
+        </div>
 
         {/* D&D時のオーバーレイ UI は統合されているのでここでは不要 */}
       </main>
 
       <footer className="status-bar">
         <div className="status-bar-left">
-          {isChordWaiting && (
-            <div className="status-bar-item">
-              {t('status.chordWaiting')}
-            </div>
-          )}
+          {isChordWaiting && <div className="status-bar-item">{t('status.chordWaiting')}</div>}
         </div>
-        
+
         <div className="status-bar-right">
           {selectionCount > 0 && (
             <div className="status-bar-item">
               {selectionCount} {t('status.charSelected')}
             </div>
           )}
-          <div 
-            className="status-bar-item highlight" 
+          <div
+            className="status-bar-item highlight"
             style={{ cursor: 'pointer' }}
             title={t('status.gotoLine')}
             onClick={() => {
@@ -2017,39 +2449,54 @@ function App() {
           >
             {t('status.line')} {cursorPos.line}, {t('status.col')} {cursorPos.column}
           </div>
-          <div className="status-bar-item" onClick={toggleEol} style={{ cursor: 'pointer' }} data-tooltip={t('status.eolTooltip')}>
+          <div
+            className="status-bar-item"
+            onClick={toggleEol}
+            style={{ cursor: 'pointer' }}
+            data-tooltip={t('status.eolTooltip')}
+          >
             {eolMode}
           </div>
-          <div className="status-bar-item">
-            UTF-8
-          </div>
-          <span 
+          <div className="status-bar-item">UTF-8</div>
+          <span
             className="status-bar-item highlight"
             onClick={() => setShowLanguagePalette(true)}
             data-tooltip={t('status.langMode')}
           >
-            {activeFile?.language ? (activeFile.language.charAt(0).toUpperCase() + activeFile.language.slice(1)) : 'Markdown'}
+            {activeFile?.language
+              ? activeFile.language.charAt(0).toUpperCase() + activeFile.language.slice(1)
+              : 'Markdown'}
           </span>
         </div>
       </footer>
 
-
       {/* コンテキストメニュー（右クリック時に表示） */}
       {contextMenu && (
-        <div className="context-menu-overlay" onClick={() => setContextMenu(null)} onContextMenu={(e) => { e.preventDefault(); setContextMenu(null); }}>
-          <div 
-            className="context-menu" 
+        <div
+          className="context-menu-overlay"
+          onClick={() => setContextMenu(null)}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setContextMenu(null);
+          }}
+        >
+          <div
+            className="context-menu"
             style={{ top: contextMenu.y, left: contextMenu.x }}
             onClick={(e) => e.stopPropagation()}
           >
             {contextMenu.fileId ? (
               <>
-                <div className="context-menu-item" onClick={handleContextOpen}>{t('context.open')}</div>
+                <div className="context-menu-item" onClick={handleContextOpen}>
+                  {t('context.open')}
+                </div>
                 <div className="context-menu-separator" />
-                <div className="context-menu-item" onClick={handleContextRename}>{t('context.rename')}</div>
+                <div className="context-menu-item" onClick={handleContextRename}>
+                  {t('context.rename')}
+                </div>
                 <div className="context-menu-separator" />
-                <div 
-                  className={`context-menu-item ${files.length <= 1 ? 'disabled' : 'danger'}`} 
+                <div
+                  className={`context-menu-item ${files.length <= 1 ? 'disabled' : 'danger'}`}
                   onClick={files.length > 1 ? handleContextDelete : undefined}
                 >
                   {t('context.delete')}
@@ -2057,28 +2504,42 @@ function App() {
               </>
             ) : (
               <>
-                <div className="context-menu-item" onClick={() => { openNewFilePalette(); setContextMenu(null); }}>{t('context.newFile')}</div>
-                <div className="context-menu-item" onClick={() => { openFileFromDisk(); setContextMenu(null); }}>{t('context.openFile')}</div>
+                <div
+                  className="context-menu-item"
+                  onClick={() => {
+                    openNewFilePalette();
+                    setContextMenu(null);
+                  }}
+                >
+                  {t('context.newFile')}
+                </div>
+                <div
+                  className="context-menu-item"
+                  onClick={() => {
+                    openFileFromDisk();
+                    setContextMenu(null);
+                  }}
+                >
+                  {t('context.openFile')}
+                </div>
               </>
             )}
           </div>
         </div>
       )}
 
-      <input 
-        type="file" 
-        ref={fileInputRef} 
-        onChange={handleFileOpen} 
-        accept="*/*" 
-        style={{ display: 'none' }} 
+      <input
+        type="file"
+        ref={fileInputRef}
+        onChange={handleFileOpen}
+        accept="*/*"
+        style={{ display: 'none' }}
       />
 
       {/* エラートースト通知 */}
       {toastMsg && (
         <div className="toast-container">
-          <div className="toast-notification">
-            {toastMsg}
-          </div>
+          <div className="toast-notification">{toastMsg}</div>
         </div>
       )}
     </div>

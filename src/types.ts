@@ -6,7 +6,8 @@ export interface EditorFile {
   savedContent?: string;
   language?: string; // 動的言語用のプロパティ
   isSettings?: boolean;
-  handle?: any; // FileSystemFileHandle: File System Access API 用
+  handle?: any; // eslint-disable-line
+  // FileSystemFileHandle: File System Access API 用
 }
 
 // エディターの設定の型定義
