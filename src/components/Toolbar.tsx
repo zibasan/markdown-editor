@@ -62,6 +62,7 @@ export function Toolbar({
     if (showAlertMenu) {
       document.addEventListener('mousedown', handleClickOutside);
     }
+
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
     };

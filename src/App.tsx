@@ -87,6 +87,7 @@ function App() {
         return DEFAULT_SETTINGS;
       }
     }
+
     return DEFAULT_SETTINGS;
   });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -109,6 +110,7 @@ function App() {
     if (saved === 'system' || saved === 'light' || saved === 'dark') {
       return saved as Theme;
     }
+
     return 'dark';
   });
   const [activeTheme, setActiveTheme] = useState<'light' | 'dark'>('dark');
@@ -178,6 +180,7 @@ function App() {
 
   const isSupportedFile = (file: File): boolean => {
     const ext = file.name.split('.').pop()?.toLowerCase();
+
     return ext === 'md' || ext === 'txt';
   };
 
@@ -212,6 +215,7 @@ function App() {
       bash: 'shell',
       sql: 'sql',
     };
+
     return map[ext] || 'plaintext';
   };
 
@@ -343,6 +347,7 @@ function App() {
     let fileName = newFileNameInput.trim();
     if (!fileName) {
       setShowNewFilePalette(false);
+
       return;
     }
 
@@ -352,6 +357,7 @@ function App() {
       const ext = fileName.split('.').pop()?.toLowerCase();
       if (ext !== 'md' && ext !== 'txt') {
         showToast('エラー: .md または .txt 拡張子のみサポートされています。');
+
         return;
       }
     } else {
@@ -429,6 +435,7 @@ function App() {
       }
     };
     document.addEventListener('click', handleClickOutside);
+
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
 
@@ -445,6 +452,7 @@ function App() {
           setIsChordWaiting(false);
           chordTimeoutRef.current = null;
         }, 1000);
+
         return;
       }
 
@@ -457,6 +465,7 @@ function App() {
           e.preventDefault();
           openNewFilePalette();
           resetChord();
+
           return;
         }
 
@@ -479,6 +488,7 @@ function App() {
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
+
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [isChordWaiting, handleSave, openFileFromDisk]); // isChordWaiting や handleSave, openFileFromDisk の変化を検知する必要がある
 
@@ -560,6 +570,7 @@ function App() {
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     mediaQuery.addEventListener('change', updateTheme);
+
     return () => mediaQuery.removeEventListener('change', updateTheme);
   }, [theme, activeTheme]);
 
@@ -900,6 +911,7 @@ function App() {
     if (!isSupportedFile(file)) {
       showToast('エラー: Markdown(.md)またはテキスト(.txt)ファイルのみサポートされています。');
       e.target.value = ''; // Reset
+
       return;
     }
     const reader = new FileReader();
@@ -941,12 +953,14 @@ function App() {
         const file = e.dataTransfer.files[0];
         if (!file || !isSupportedFile(file)) return;
         readDroppedFile(file);
+
         return;
       }
 
       const file = await handle.getFile();
       if (!isSupportedFile(file)) {
         showToast('エラー: Markdown(.md)またはテキスト(.txt)ファイルのみサポートされています。');
+
         return;
       }
 
@@ -1019,6 +1033,7 @@ function App() {
     // 未保存の変更がない場合はそのまま閉じる
     if (!getIsDirty(fileToClose)) {
       executeClose(id);
+
       return;
     }
 
@@ -1078,6 +1093,7 @@ function App() {
           setActiveFileId('');
         }
       }
+
       return newFiles;
     });
   };
@@ -1162,7 +1178,7 @@ function App() {
           endLineNumber: selection.endLineNumber,
           endColumn: maxCol,
         };
-        actualPrefix = '\n\n' + prefix;
+        actualPrefix = `\n\n${prefix}`;
       }
     }
 
@@ -1214,6 +1230,7 @@ function App() {
   const filteredLanguages = useMemo(() => {
     if (!languageSearch.trim()) return availableLanguages;
     const lowerSearch = languageSearch.toLowerCase();
+
     return availableLanguages.filter(
       (l) =>
         l.id.toLowerCase().includes(lowerSearch) ||
@@ -2395,6 +2412,7 @@ function App() {
                         components={{
                           code({ className, children, ...props }) {
                             const match = /language-(\w+)/.exec(className || '');
+
                             return match ? (
                               <SyntaxHighlighter
                                 style={activeTheme === 'dark' ? vscDarkPlus : vs}

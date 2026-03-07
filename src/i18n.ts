@@ -256,6 +256,7 @@ const translations: Record<string, TranslationDict> = { ja, en };
  */
 export function createT(lang: 'ja' | 'en') {
   const dict = translations[lang] || translations['ja'];
+
   return (key: string): string => {
     return dict[key] ?? key; // キーが見つからない場合はキーそのものを返す
   };
