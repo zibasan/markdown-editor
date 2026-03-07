@@ -48,6 +48,7 @@ function App() {
   // 設定機能のState
   const [settings, setSettings] = useState<EditorSettings>(DEFAULT_SETTINGS);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [showSettingsTab, setShowSettingsTab] = useState(false); // 設定タブをタブバーに残すためのフラグ
   const [showPreview, setShowPreview] = useState<boolean>(false);
 
   // ペインの幅管理State
@@ -306,7 +307,7 @@ function App() {
   const outlineItems = useMemo(() => {
     if (!activeFile) return [];
     
-    const lines = activeFile.content.split('\n');
+    const lines = activeFile.content.split(/\r?\n/);
     const items: OutlineItem[] = [];
     
     // Markdownの見出し（行の先頭が1〜6個の#で始まり、その後にスペースがある）を判定
@@ -343,6 +344,12 @@ function App() {
     mediaQuery.addEventListener('change', updateTheme);
     return () => mediaQuery.removeEventListener('change', updateTheme);
   }, [theme, activeTheme]);
+
+  // 設定のフォントをCSS変数に反映する
+  useEffect(() => {
+    document.documentElement.style.setProperty('--app-font', settings.uiFont);
+    document.documentElement.style.setProperty('--editor-font', settings.editorFont);
+  }, [settings.uiFont, settings.editorFont]);
 
   // === エディターがマウントされる前のイベントハンドラ (テーマ定義用) ===
   const handleEditorWillMount = (monacoInstance: Monaco) => {
@@ -504,8 +511,9 @@ function App() {
     })));
     const model = editorInstance.getModel();
     if (model) {
-      const eol = model.getEOL();
-      setEolMode(eol === '\n' ? 'LF' : 'CRLF');
+      // 常にデフォルトを LF (0) に固定する
+      model.setEOL(monacoInstance.editor.EndOfLineSequence.LF);
+      setEolMode('LF');
     }
 
     // === 言語設定の再試行 (オートクローズの確実な動作のため) ===
@@ -566,10 +574,10 @@ function App() {
       }
     });
 
-    // 改行コードの初期取得 (504行目ですでに取得・設定済みのため再定義は不要)
+    // 改行コードの初期取得・設定 (LF固定)
     if (model) {
-      const eolText = model.getEOL();
-      setEolMode(eolText === '\n' ? 'LF' : 'CRLF');
+      model.setEOL(monacoInstance.editor.EndOfLineSequence.LF);
+      setEolMode('LF');
     }
 
     // コマンドパレットにアクションを追加 (プレビュー切り替え)
@@ -605,6 +613,43 @@ function App() {
       ],
       run: function () {
         handleSave();
+      }
+    });
+
+    // カスタムコマンド: 設定を開く
+    editorInstance.addAction({
+      id: 'open-settings-action',
+      label: 'Preferences: Open Settings',
+      keybindings: [
+        monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.US_COMMA
+      ],
+      run: function () {
+        setIsSettingsOpen(true);
+        setShowSettingsTab(true);
+      }
+    });
+
+    // カスタムコマンド: ファイルを開く
+    editorInstance.addAction({
+      id: 'open-file-action',
+      label: 'File: Open File...',
+      keybindings: [
+        monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyO
+      ],
+      run: function () {
+        openFileFromDisk();
+      }
+    });
+
+    // カスタムコマンド: すべてのファイルを閉じる (初期画面に戻る)
+    editorInstance.addAction({
+      id: 'close-all-files-action',
+      label: 'View: Close All Editor Tabs',
+      run: function () {
+        // 未保存の確認はひとまずすべて破棄するシンプルな強制クローズとして実装
+        setFiles([]);
+        setActiveFileId('');
+        setIsSettingsOpen(false);
       }
     });
 
@@ -1184,9 +1229,9 @@ function App() {
           </div>
           <div style={{ flex: 1 }}></div>
           <div 
-            className={`activity-icon ${isSettingsOpen ? 'active' : ''}`} 
+            className={`activity-icon ${(isSettingsOpen || showSettingsTab) ? 'active' : ''}`} 
             data-tooltip-right="管理 (設定)"
-            onClick={() => setIsSettingsOpen(true)}
+            onClick={() => { setIsSettingsOpen(true); setShowSettingsTab(true); }}
           >
             <Settings size={24} />
           </div>
@@ -1316,16 +1361,20 @@ function App() {
             );
           })}
           {/* 設定タブ */}
-          {isSettingsOpen && (
+          {showSettingsTab && (
             <div 
-              className={`editor-tab active`}
+              className={`editor-tab ${isSettingsOpen ? 'active' : ''}`}
               onClick={() => setIsSettingsOpen(true)}
             >
               <Settings size={14} />
               <span className="tab-title">設定</span>
               <button 
                 className="tab-close-btn"
-                onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(false); }}
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  setIsSettingsOpen(false);
+                  setShowSettingsTab(false);
+                }}
                 data-tooltip="閉じる"
               >
                 <X size={14} />
@@ -1390,6 +1439,39 @@ function App() {
                       <option value="off">オフ</option>
                     </select>
                   </div>
+                  <div className="setting-row">
+                    <span className="setting-label">アプリのフォント (UI)</span>
+                    <select 
+                      className="setting-input" 
+                      style={{ width: '180px' }}
+                      value={settings.uiFont}
+                      onChange={e => setSettings({...settings, uiFont: e.target.value})}
+                    >
+                      <option value="consolas, 'Courier New', monospace">Consolas (標準)</option>
+                      <option value="'Inter', 'Noto Sans JP', sans-serif">Inter & Noto Sans JP</option>
+                      <option value="'Roboto', 'M PLUS 1p', sans-serif">Roboto & M PLUS 1p</option>
+                      <option value="'Roboto', 'LINE Seed JP', sans-serif">Roboto & LINE Seed JP</option>
+                      <option value="'Google Sans', 'Noto Sans JP', sans-serif">Google Sans & Noto Sans JP</option>
+                      <option value="'Google Sans Code', 'BIZ UDGothic', sans-serif">Google Sans Code & BIZ UD ゴシック</option>
+                      <option value="'Source Code Pro', monospace">Source Code Pro & monospace</option>
+                    </select>
+                  </div>
+                  <div className="setting-row">
+                    <span className="setting-label">エディターのフォント</span>
+                    <select 
+                      className="setting-input" 
+                      style={{ width: '180px' }}
+                      value={settings.editorFont}
+                      onChange={e => setSettings({...settings, editorFont: e.target.value})}
+                    >
+                      <option value="consolas, 'Courier New', monospace">Consolas (標準)</option>
+                      <option value="'Fira Code', 'Noto Sans JP', monospace">Fira Code & Noto Sans</option>
+                      <option value="'JetBrains Mono', 'Noto Sans JP', monospace">JetBrains Mono & Noto Sans</option>
+                      <option value="'Roboto Mono', 'BIZ UDGothic', monospace">Roboto Mono & BIZ UD ゴシック</option>
+                      <option value="'Google Sans Code', 'Noto Sans JP', monospace">Google Sans Code & Noto Sans JP</option>
+                      <option value="'JetBrains Mono', 'BIZ UDGothic', monospace">JetBrains Mono & BIZ UD ゴシック</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             ) : (
@@ -1397,34 +1479,35 @@ function App() {
               <>
               <div className="editor-pane">
                 <div className="monaco-wrapper">
-                  {activeFile ? (
-                    <Editor
-                      height="100%"
-                      defaultLanguage="markdown"
-                      language={activeFile.language || 'markdown'}
-                      theme={activeTheme === 'dark' ? 'vscode-markdown-dark' : 'vscode-markdown-light'}
-                      value={activeFile.content}
-                      onChange={handleEditorChange}
-                      beforeMount={handleEditorWillMount}
-                      onMount={handleEditorDidMount}
-                      options={{
-                        minimap: { enabled: settings.minimap },
-                        wordWrap: settings.wordWrap,
-                        fontSize: settings.fontSize,
-                        lineHeight: settings.lineHeight,
-                        padding: { top: 16, bottom: 16 },
-                        scrollBeyondLastLine: false,
-                        smoothScrolling: true,
-                        cursorBlinking: 'smooth',
-                        fontFamily: 'Consolas, "Courier New", monospace',
-                        autoClosingQuotes: 'always',
-                        autoClosingBrackets: 'always',
-                        autoClosingOvertype: 'always',
-                        autoSurround: 'languageDefined',
-                      }}
-                    />
-                  ) : (
-                    <div className="empty-state-view">
+                  {/* activeFileの有無に関わらず、コマンドパレット等を使うために常にエディタを配置する */}
+                  <Editor
+                    height="100%"
+                    defaultLanguage="markdown"
+                    language={activeFile ? (activeFile.language || 'markdown') : 'plaintext'}
+                    theme={activeTheme === 'dark' ? 'vscode-markdown-dark' : 'vscode-markdown-light'}
+                    value={activeFile ? activeFile.content : ''}
+                    onChange={handleEditorChange}
+                    beforeMount={handleEditorWillMount}
+                    onMount={handleEditorDidMount}
+                    options={{
+                      readOnly: !activeFile, // ファイル未選択時は読み取り専用
+                      minimap: { enabled: settings.minimap },
+                      wordWrap: settings.wordWrap,
+                      fontSize: settings.fontSize,
+                      lineHeight: settings.lineHeight,
+                      padding: { top: 16, bottom: 16 },
+                      scrollBeyondLastLine: false,
+                      smoothScrolling: true,
+                      cursorBlinking: 'smooth',
+                      fontFamily: settings.editorFont, // 設定からフォントを反映
+                      autoClosingQuotes: 'always',
+                      autoClosingBrackets: 'always',
+                      autoClosingOvertype: 'always',
+                      autoSurround: 'languageDefined',
+                    }}
+                  />
+                  {!activeFile && (
+                    <div className="empty-state-view" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10, backgroundColor: 'var(--editor-bg)' }}>
                       <div className="empty-state-logo">
                         <img src="/vite.svg" alt="App Logo" />
                       </div>
@@ -1447,9 +1530,9 @@ function App() {
                         </div>
                       </div>
                     </div>
-                )}
+                  )}
+                </div>
               </div>
-            </div>
             
             {showPreview && activeFile && (
               <>
@@ -1504,7 +1587,18 @@ function App() {
               {selectionCount} 文字選択
             </div>
           )}
-          <div className="status-bar-item">
+          <div 
+            className="status-bar-item highlight" 
+            style={{ cursor: 'pointer' }}
+            title="行/列に移動する (Ctrl+G)"
+            onClick={() => {
+              if (editorRef.current) {
+                // editorにフォーカスしてGo To Lineパレットを開かせる
+                editorRef.current.focus();
+                editorRef.current.trigger('source', 'editor.action.gotoLine', null);
+              }
+            }}
+          >
             行 {cursorPos.line}、列 {cursorPos.column}
           </div>
           <div className="status-bar-item" onClick={toggleEol} style={{ cursor: 'pointer' }} data-tooltip="改行コードの切り替え">

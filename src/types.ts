@@ -14,6 +14,8 @@ export interface EditorSettings {
   lineHeight: number;
   minimap: boolean;
   wordWrap: 'on' | 'off';
+  uiFont: string;
+  editorFont: string;
 }
 
 export const DEFAULT_SETTINGS: EditorSettings = {
@@ -21,4 +23,6 @@ export const DEFAULT_SETTINGS: EditorSettings = {
   lineHeight: 24,
   minimap: false,
   wordWrap: 'on',
+  uiFont: 'consolas, "Courier New", monospace',
+  editorFont: 'consolas, "Courier New", monospace',
 };
