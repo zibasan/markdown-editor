@@ -1,0 +1,1148 @@
+:root {
+  /* 繝繝ｼ繧ｯ繝��繝� (繝�ヵ繧ｩ繝ｫ繝�) */
+  --bg-color: #1e1e1e;
+  --text-color: #cccccc;
+  
+  --titlebar-bg: #181818;
+  --titlebar-border: #2b2b2b;
+  
+  --activity-bg: #181818;
+  --activity-border: #2b2b2b;
+  --activity-icon: #7d7d7d;
+  --activity-icon-active: #ffffff;
+  
+  --sidebar-bg: #252526;
+  --sidebar-border: #1e1e1e;
+  
+  --editor-bg: #1e1e1e;
+  
+  --toolbar-bg: #252526;
+  --toolbar-border: #3c3c3c;
+  --button-hover: #2a2d2e;
+  --button-active: #094771;
+  
+  --tab-inactive-bg: #2d2d2d;
+  --tab-active-bg: #1e1e1e;
+  --tab-border: #252526;
+  
+  --statusbar-bg: #1e1e1e;
+  --statusbar-fg: #cccccc;
+  --statusbar-border: #2b2b2b;
+  
+  --accent-color: #007acc;
+  --focus-border: #007fd4;
+}
+
+[data-theme="light"] {
+  /* 繝ｩ繧､繝医ユ繝ｼ繝� */
+  --bg-color: #ffffff;
+  --text-color: #333333;
+  
+  --titlebar-bg: #dddddd;
+  --titlebar-border: #b5b5b5;
+  
+  --activity-bg: #2c2c2c;
+  --activity-border: #1e1e1e;
+  --activity-icon: #7d7d7d;
+  --activity-icon-active: #ffffff;
+  
+  --sidebar-bg: #f3f3f3;
+  --sidebar-border: #e5e5e5;
+  
+  --editor-bg: #ffffff;
+  
+  --toolbar-bg: #f8f8f8;
+  --toolbar-border: #e5e5e5;
+  --button-hover: #e8e8e8;
+  --button-active: #c4d9ea;
+  
+  --tab-inactive-bg: #ececec;
+  --tab-active-bg: #ffffff;
+  --tab-border: #f3f3f3;
+  
+  --statusbar-bg: #ffffff;
+  --statusbar-fg: #333333;
+  --statusbar-border: #dddddd;
+  
+  --accent-color: #007acc;
+  --focus-border: #0078d4;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  overflow: hidden;
+}
+
+/* 蜈ｨ菴薙�繧ｳ繝ｳ繝�リ */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* 繧ｿ繧､繝医Ν繝舌 */
+.app-titlebar {
+  background-color: var(--titlebar-bg);
+  border-bottom: 1px solid var(--titlebar-border);
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 10px;
+  font-size: 12px;
+  user-select: none;
+  color: var(--text-color);
+  flex-shrink: 0;
+}
+
+.titlebar-section {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1 1 0;
+}
+
+.titlebar-center {
+  justify-content: center;
+}
+
+.titlebar-right {
+  justify-content: flex-end;
+}
+
+.command-palette-trigger {
+  background-color: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 0 10px;
+  height: 22px;
+  width: 400px;
+  max-width: 40vw;
+  box-sizing: border-box;
+  color: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 6px;
+  transition: background-color 0.2s;
+}
+[data-theme="light"] .command-palette-trigger {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+.command-palette-trigger:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+[data-theme="light"] .command-palette-trigger:hover {
+  background-color: rgba(0, 0, 0, 0.1);
+}
+
+.theme-toggle-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.theme-toggle-btn:hover {
+  background-color: rgba(128, 128, 128, 0.2);
+}
+
+/* === メニューバー === */
+.menu-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.menu-item {
+  position: relative;
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 13px;
+}
+.menu-item:hover, .menu-item.active {
+  background-color: rgba(128, 128, 128, 0.2);
+}
+
+.menu-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  background-color: var(--toolbar-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  min-width: 200px;
+  z-index: 1000;
+  padding: 4px 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.menu-dropdown-item {
+  padding: 6px 20px 6px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.menu-dropdown-item:hover {
+  background-color: var(--button-active);
+  color: #fff;
+}
+.menu-dropdown-shortcut {
+  font-size: 11px;
+  opacity: 0.6;
+}
+.menu-dropdown-item:hover .menu-dropdown-shortcut {
+  opacity: 0.9;
+}
+
+.menu-dropdown-separator {
+  height: 1px;
+  background-color: var(--toolbar-border);
+  margin: 4px 0;
+}
+
+.menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 999;
+}
+
+/* 繝｡繧､繝ｳ鬆伜沺 (繝舌�縺ｨ繧ｨ繝�ぅ繧ｿ繝ｼ) */
+.app-main {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* 繧｢繧ｯ繝�ぅ繝薙ユ繧｣繝舌� (荳逡ｪ蟾ｦ縺ｮ邏ｰ縺�ｸｯ) */
+.activity-bar {
+  width: 48px;
+  background-color: var(--activity-bg);
+  border-right: 1px solid var(--activity-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 0;
+  flex-shrink: 0;
+}
+
+.activity-icon {
+  color: var(--activity-icon);
+  padding: 12px;
+  cursor: pointer;
+  border-left: 2px solid transparent;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: color 0.1s;
+}
+.activity-icon:hover {
+  color: var(--activity-icon-active);
+}
+.activity-icon.active {
+  color: var(--activity-icon-active);
+  border-left-color: var(--activity-icon-active);
+}
+
+/* 繧ｵ繧､繝峨ヰ繝ｼ (繝輔ぃ繧､繝ｫ繝�Μ繝ｼ縺ｪ縺ｩ縲∽ｻ雁屓縺ｯ繧ｿ繧､繝医Ν縺ｮ縺ｿ) */
+.side-bar {
+  width: 250px;
+  background-color: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  display: flex;
+  flex-direction: column;
+}
+
+.side-bar-header {
+  font-size: 11px;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--activity-icon);
+}
+
+.side-bar-content {
+  padding: 10px 20px;
+  font-size: 13px;
+}
+
+/* === エディター全体 === */
+.editor-container {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--editor-bg);
+  min-width: 0;
+}
+
+/* === ツールバー === */
+.editor-toolbar {
+  background-color: var(--toolbar-bg);
+  border-bottom: 1px solid var(--toolbar-border);
+  overflow: visible;
+  flex-shrink: 0;
+}
+
+.toolbar-inner {
+  display: flex;
+  align-items: center;
+  padding: 6px 16px;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.toolbar-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+.toolbar-btn:hover, .toolbar-btn.active {
+  background-color: var(--button-hover);
+}
+
+.toolbar-separator {
+  width: 1px;
+  background-color: var(--toolbar-border);
+  margin: 0 6px;
+  height: 24px;
+}
+
+/* Monaco Editor領域 */
+.monaco-wrapper {
+  height: 100%;
+  width: 100%;
+  position: relative;
+}
+
+/* === ステータスバー === */
+.status-bar {
+  height: 22px;
+  background-color: var(--statusbar-bg);
+  color: var(--statusbar-fg);
+  border-top: 1px solid var(--statusbar-border);
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 12px;
+  justify-content: space-between;
+  user-select: none;
+  z-index: 100;
+}
+
+/* === タブバー (VSCode風) === */
+.tabs-container {
+  display: flex;
+  background-color: var(--tab-inactive-bg);
+  height: 35px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex-shrink: 0;
+}
+
+.dirty-marker {
+  margin-left: 4px;
+  font-weight: bold;
+  opacity: 0.8;
+}
+.tabs-container::-webkit-scrollbar {
+  height: 0;
+}
+
+.editor-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 0 15px;
+  min-width: 120px;
+  max-width: 200px;
+  background-color: var(--tab-inactive-bg);
+  color: var(--text-color);
+  border-right: 1px solid var(--tab-border);
+  cursor: pointer;
+  font-size: 13px;
+  user-select: none;
+  opacity: 0.7;
+  position: relative;
+}
+
+.editor-tab.active {
+  background-color: var(--tab-active-bg);
+  opacity: 1;
+}
+.editor-tab.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background-color: var(--accent-color);
+}
+
+.editor-tab:hover:not(.active) {
+  opacity: 1;
+}
+
+.tab-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tab-close-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 2px;
+  opacity: 0;
+}
+.editor-tab:hover .tab-close-btn, .editor-tab.active .tab-close-btn {
+  opacity: 1;
+}
+.tab-close-btn:hover {
+  background-color: rgba(128, 128, 128, 0.2);
+}
+
+/* === サイドバー・エクスプローラー === */
+.sidebar-header {
+  padding: 10px 15px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.sidebar-header h3 {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  margin: 0;
+  letter-spacing: 0.5px;
+  color: var(--text-color);
+  opacity: 0.8;
+}
+
+.sidebar-action-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sidebar-action-btn:hover {
+  background-color: rgba(128, 128, 128, 0.2);
+}
+
+.explorer-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.explorer-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 20px;
+  cursor: pointer;
+  color: var(--text-color);
+  user-select: none;
+}
+.explorer-item:hover {
+  background-color: var(--button-hover);
+}
+.explorer-item.active {
+  background-color: var(--button-active);
+  color: #ffffff;
+}
+
+.explorer-close-btn {
+  background: transparent;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  padding: 2px;
+  opacity: 0;
+  flex-shrink: 0;
+}
+.explorer-item:hover .explorer-close-btn {
+  opacity: 1;
+}
+.explorer-close-btn:hover {
+  background-color: rgba(128, 128, 128, 0.2);
+}
+
+/* === サイドバー・アウトライン === */
+.outline-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+  color: var(--text-color);
+  user-select: none;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.outline-item:hover {
+  background-color: var(--button-hover);
+}
+.outline-level-1 { padding-left: 20px; font-weight: bold; }
+.outline-level-2 { padding-left: 35px; }
+.outline-level-3 { padding-left: 50px; font-size: 12px; opacity: 0.9; }
+.outline-level-4 { padding-left: 65px; font-size: 12px; opacity: 0.8; }
+.outline-level-5 { padding-left: 80px; font-size: 12px; opacity: 0.7; }
+.outline-level-6 { padding-left: 95px; font-size: 12px; opacity: 0.6; }
+
+
+/* === 設定画面 === */
+.settings-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.settings-modal {
+  background-color: var(--editor-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 6px;
+  width: 400px;
+  max-width: 90%;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--toolbar-border);
+  font-weight: bold;
+  color: var(--text-color);
+}
+
+.settings-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+}
+.settings-close-btn:hover {
+  background-color: var(--button-hover);
+}
+
+.settings-content {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.setting-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.setting-label {
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+.setting-input {
+  background-color: var(--toolbar-bg);
+  border: 1px solid var(--toolbar-border);
+  color: var(--text-color);
+  padding: 6px 8px;
+  border-radius: 4px;
+  width: 100px;
+  outline: none;
+}
+.setting-input:focus {
+  border-color: var(--accent-color);
+}
+
+.setting-checkbox {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* === プレビュー領域 === */
+.split-view-container {
+  display: flex;
+  flex: 1;
+  min-height: 0; /* 圧縮を防ぐためのフレックスボックスのおまじない */
+  width: 100%;
+}
+
+.editor-pane {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+.preview-pane {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border-left: 1px solid var(--toolbar-border);
+  background-color: var(--editor-bg);
+  color: var(--text-color);
+  padding: 20px 30px;
+  overflow-y: auto;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  line-height: 1.6;
+  word-wrap: break-word;
+}
+
+.preview-pane h1, .preview-pane h2 {
+  border-bottom: 1px solid var(--toolbar-border);
+  padding-bottom: 0.3em;
+  margin-top: 24px;
+  font-weight: 600;
+}
+.preview-pane h3, .preview-pane h4, .preview-pane h5, .preview-pane h6 { margin-top: 24px; font-weight: 600; }
+.preview-pane p { margin-top: 0; margin-bottom: 16px; }
+.preview-pane code {
+  background-color: rgba(128, 128, 128, 0.15);
+  padding: 0.2em 0.4em;
+  border-radius: 3px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 85%;
+}
+.preview-pane pre { background-color: rgba(128, 128, 128, 0.1); padding: 16px; overflow: auto; border-radius: 6px; line-height: 1.45; margin-bottom: 16px; }
+.preview-pane pre code { background-color: transparent; padding: 0; font-size: 100%; }
+.preview-pane blockquote { border-left: 0.25em solid #608b4e; padding: 0 1em; color: #608b4e; margin: 0 0 16px 0; }
+[data-theme="light"] .preview-pane blockquote { border-left-color: #008000; color: #008000; }
+.preview-pane table { border-collapse: collapse; width: 100%; margin: 16px 0; border: 1px solid var(--toolbar-border); }
+.preview-pane th, .preview-pane td { border: 1px solid var(--toolbar-border); padding: 6px 13px; }
+.preview-pane th { background-color: rgba(128, 128, 128, 0.1); font-weight: 600; }
+.preview-pane tr:nth-child(2n) { background-color: rgba(128, 128, 128, 0.05); }
+.preview-pane img { max-width: 100%; box-sizing: content-box; background-color: var(--editor-bg); }
+.preview-pane a { color: #3794ff; text-decoration: none; }
+.preview-pane a:hover { text-decoration: underline; }
+.preview-pane ul, .preview-pane ol { padding-left: 2em; margin-top: 0; margin-bottom: 16px; }
+.preview-pane hr { height: 0.25em; padding: 0; margin: 24px 0; background-color: var(--toolbar-border); border: 0; }
+
+/* === リサイズ用ハンドル === */
+.resizer-x {
+  width: 5px;
+  background-color: transparent;
+  cursor: col-resize;
+  flex: none;
+  z-index: 10;
+  transition: background-color 0.2s;
+}
+.resizer-x:hover, .resizer-x:active {
+  background-color: var(--accent-color);
+}
+
+/* === カスタムツールチップ (VSCode風) === */
+[data-tooltip], [data-tooltip-right], [data-tooltip-left] {
+  position: relative;
+}
+
+[data-tooltip]::before, [data-tooltip-right]::before, [data-tooltip-left]::before {
+  position: absolute;
+  background-color: var(--sidebar-bg);
+  color: var(--text-color);
+  padding: 4px 8px;
+  font-size: 11px;
+  border: 1px solid var(--toolbar-border);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease-in-out 0.4s;
+  z-index: 10000;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: 0.5px;
+}
+[data-theme="light"] [data-tooltip]::before, [data-theme="light"] [data-tooltip-right]::before, [data-theme="light"] [data-tooltip-left]::before {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+/* ツールチップ下方向 (デフォルト) */
+[data-tooltip]::before {
+  content: attr(data-tooltip);
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 6px;
+}
+
+/* ツールチップ右方向 (アクティビティバー用) */
+[data-tooltip-right]::before {
+  content: attr(data-tooltip-right);
+  top: 50%;
+  left: 100%;
+  transform: translateY(-50%);
+  margin-left: 14px;
+}
+
+/* ツールチップ左方向 (右上のボタン用) */
+[data-tooltip-left]::before {
+  content: attr(data-tooltip-left);
+  top: 100%;
+  right: 0;
+  margin-top: 6px;
+}
+
+[data-tooltip]:hover::before, [data-tooltip-right]:hover::before, [data-tooltip-left]:hover::before {
+  opacity: 1;
+  visibility: visible;
+}
+
+/* === コンテキストメニュー (VSCode風) === */
+.context-menu-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 9999;
+}
+
+.context-menu {
+  position: fixed;
+  background-color: var(--sidebar-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 5px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  min-width: 180px;
+  padding: 4px 0;
+  z-index: 10000;
+  font-size: 13px;
+  color: var(--text-color);
+  animation: contextMenuFadeIn 0.1s ease-out;
+}
+[data-theme="light"] .context-menu {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+}
+
+@keyframes contextMenuFadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.context-menu-item {
+  padding: 6px 24px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+}
+.context-menu-item:hover {
+  background-color: var(--button-active);
+  color: #ffffff;
+}
+.context-menu-item.disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.context-menu-item.disabled:hover {
+  background-color: transparent;
+  color: var(--text-color);
+}
+.context-menu-item.danger:hover {
+  background-color: #c72e2e;
+}
+
+.context-menu-separator {
+  height: 1px;
+  background-color: var(--toolbar-border);
+  margin: 4px 0;
+}
+
+/* === リネーム(名前変更)入力欄 === */
+.rename-input {
+  background-color: var(--editor-bg);
+  border: 1px solid var(--accent-color);
+  color: var(--text-color);
+  font-size: 13px;
+  padding: 1px 4px;
+  border-radius: 2px;
+  outline: none;
+  flex: 1;
+  min-width: 0;
+}
+
+/* === 設定タブ (VSCode風インライン設定画面) === */
+.settings-tab-content {
+  flex: 1;
+  padding: 30px 50px;
+  overflow-y: auto;
+  background-color: var(--editor-bg);
+}
+
+.settings-tab-title {
+  font-size: 22px;
+  font-weight: 400;
+  margin-bottom: 24px;
+  color: var(--text-color);
+}
+
+/* === D&D オーバーレイ === */
+.drag-overlay {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 99999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  pointer-events: none;
+}
+.drag-overlay-content {
+  background-color: var(--editor-bg);
+  border: 2px dashed var(--accent-color);
+  border-radius: 8px;
+  padding: 40px 60px;
+  font-size: 20px;
+  color: var(--text-color);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* === トースト通知 === */
+.toast-container {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  z-index: 100000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+.toast-notification {
+  background-color: var(--sidebar-bg);
+  color: var(--text-color);
+  border-left: 4px solid #c72e2e; /* エラー用 */
+  padding: 12px 20px;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 13px;
+  animation: toastSlideIn 0.3s ease-out forwards;
+}
+@keyframes toastSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+
+/* === QuickPick パレット (VSCode風コマンド一覧・言語選択) === */
+.quickpick-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  z-index: 100000;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding-top: 50px;
+}
+.quickpick-container {
+  background-color: var(--sidebar-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 6px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  width: 600px;
+  max-width: 90vw;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: quickpickFadeIn 0.1s ease-out forwards;
+}
+@keyframes quickpickFadeIn {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.quickpick-input-wrapper {
+  padding: 6px;
+  border-bottom: 1px solid var(--toolbar-border);
+}
+.quickpick-input {
+  width: 100%;
+  background-color: var(--editor-bg);
+  color: var(--text-color);
+  border: 1px solid var(--accent-color);
+  padding: 8px 12px;
+  font-size: 13px;
+  border-radius: 3px;
+  outline: none;
+}
+.quickpick-list {
+  max-height: 40vh;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.quickpick-item {
+  padding: 6px 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-color);
+  font-size: 13px;
+}
+.quickpick-item:hover, .quickpick-item.active {
+  background-color: var(--button-active);
+  color: white;
+}
+.quickpick-item-label {
+  flex: 1;
+}
+.quickpick-item-sub {
+  opacity: 0.6;
+  font-size: 12px;
+}
+.quickpick-item:hover .quickpick-item-sub, .quickpick-item.active .quickpick-item-sub {
+  opacity: 0.9;
+  color: white;
+}
+.drag-overlay-content {
+  background-color: var(--editor-bg);
+  border: 2px dashed var(--accent-color);
+  border-radius: 8px;
+  padding: 40px 60px;
+  font-size: 20px;
+  color: var(--text-color);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+/* === トースト通知 === */
+.toast-container {
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  z-index: 100000;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+.toast-notification {
+  background-color: var(--sidebar-bg);
+  color: var(--text-color);
+  border-left: 4px solid #c72e2e; /* エラー用 */
+  padding: 12px 20px;
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  font-size: 13px;
+  animation: toastSlideIn 0.3s ease-out forwards;
+}
+@keyframes toastSlideIn {
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+/* === 空の状態の表示 (VSCode風) === */
+.empty-state-view {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  width: 100%;
+  background-color: var(--editor-bg);
+  color: var(--activity-icon);
+  user-select: none;
+}
+
+.empty-state-logo {
+  margin-bottom: 40px;
+  opacity: 0.15;
+  filter: grayscale(1);
+}
+
+.empty-state-logo img {
+  width: 120px;
+  height: 120px;
+}
+
+.empty-state-shortcuts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 400px;
+}
+
+.shortcut-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  font-size: 13px;
+}
+
+.shortcut-label {
+  opacity: 0.8;
+}
+
+.shortcut-key {
+  font-family: var(--font-mono);
+  background-color: rgba(255, 255, 255, 0.05);
+  padding: 2px 6px;
+  border-radius: 3px;
+  min-width: 60px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-theme="light"] .shortcut-key {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* === QuickPick の拡張 (タイトル表示など) === */
+.quickpick-title {
+  padding: 4px 12px 8px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  opacity: 0.6;
+  font-weight: 600;
+}
+
+.quickpick-input-wrapper {
+  padding: 8px 8px 4px;
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-tab-content {
+  padding: 30px 60px;
+  height: 100%;
+  overflow-y: auto;
+  background-color: var(--editor-bg);
+}
+
+.settings-tab-title {
+  font-size: 24px;
+  margin-bottom: 30px;
+  font-weight: 400;
+  color: var(--text-color);
+}
+
+/* === ステータスバーのリデザイン (v18) === */
+.status-bar {
+  height: 22px;
+  background-color: var(--statusbar-bg);
+  color: var(--statusbar-fg);
+  border-top: 1px solid var(--statusbar-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 12px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.status-bar-left, .status-bar-right {
+  display: flex;
+  align-items: center;
+  height: 100%;
+}
+
+.status-bar-item {
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  height: 100%;
+  cursor: default;
+  transition: background-color 0.1s;
+}
+
+.status-bar-item:hover {
+  background-color: rgba(128, 128, 128, 0.2);
+}
+
+.status-bar-item.highlight:hover {
+  background-color: rgba(128, 128, 128, 0.3);
+}
+
+/* タブバーの縦スクロール防止 */
+.tabs-container {
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  height: 35px;
+  background-color: var(--tab-inactive-bg);
+}
+.tabs-container::-webkit-scrollbar {
+  height: 3px;
+}
+.tabs-container::-webkit-scrollbar-thumb {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+[data-theme="light"] .tabs-container::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.1);
+}
