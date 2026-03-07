@@ -5,17 +5,20 @@ import loader from '@monaco-editor/loader';
 import type { Monaco } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 import { Toolbar } from './components/Toolbar';
-import { Search, Sun, Moon, Monitor, Files, List as ListIcon, Settings, Plus, X, FileText, FolderOpen } from 'lucide-react';
+import { Search, Sun, Moon, Monitor, Files, List as ListIcon, Settings, Plus, X, Check, FileText, FolderOpen, BookOpen, Languages } from 'lucide-react';
 import type { EditorFile, EditorSettings } from './types';
 import { DEFAULT_SETTINGS } from './types';
+import { createT } from './i18n';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
+import { remarkAlert } from 'remark-github-blockquote-alert';
+import 'remark-github-blockquote-alert/alert.css';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './index.css';
 
 type Theme = 'system' | 'light' | 'dark';
-type SidebarTab = 'explorer' | 'outline';
+type SidebarTab = 'explorer' | 'outline' | 'docs';
 
 // 見出し(Outline)の型定義
 interface OutlineItem {
@@ -24,16 +27,29 @@ interface OutlineItem {
   line: number;
 }
 
-loader.config({
-  paths: {
-    vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.43.0/min/vs'
-  },
-  'vs/nls': {
-    availableLanguages: {
-      '*': 'ja'
+// Monaco Editor の言語パック初期設定（動的に変更するには再読み込みが必要）
+function configureMonacoLocale(lang: 'ja' | 'en') {
+  loader.config({
+    paths: {
+      vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@0.43.0/min/vs'
+    },
+    'vs/nls': {
+      availableLanguages: {
+        '*': lang === 'en' ? '' : lang
+      }
     }
+  });
+}
+// 初期設定は localStorage から言語を読み取って適用
+(() => {
+  try {
+    const saved = localStorage.getItem('editor_settings');
+    const lang = saved ? (JSON.parse(saved).language || 'ja') : 'ja';
+    configureMonacoLocale(lang);
+  } catch {
+    configureMonacoLocale('ja');
   }
-});
+})();
 
 function App() {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
@@ -45,19 +61,50 @@ function App() {
   const [activeFileId, setActiveFileId] = useState<string>('');
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('explorer');
 
-  // 設定機能のState
-  const [settings, setSettings] = useState<EditorSettings>(DEFAULT_SETTINGS);
+  // 設定機能のState (localStorage対応)
+  const [settings, setSettings] = useState<EditorSettings>(() => {
+    const saved = localStorage.getItem('editor_settings');
+    if (saved) {
+      try {
+        return { ...DEFAULT_SETTINGS, ...JSON.parse(saved) };
+      } catch (e) {
+        return DEFAULT_SETTINGS;
+      }
+    }
+    return DEFAULT_SETTINGS;
+  });
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [showSettingsTab, setShowSettingsTab] = useState(false); // 設定タブをタブバーに残すためのフラグ
+
+  // v35: 翻訳関数 t() の生成（settings.language に連動）
+  const t = useMemo(() => createT(settings.language), [settings.language]);
+
+  // v35: 言語切り替えパレット用の State
+  const [showLangSwitchPalette, setShowLangSwitchPalette] = useState(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
 
   // ペインの幅管理State
   const [sidebarWidth, setSidebarWidth] = useState(250);
   const [previewWidth, setPreviewWidth] = useState(500);
 
-  // 初期テーマをダークモードに変更
-  const [theme, setTheme] = useState<Theme>('dark');
+  // 初期テーマ (localStorage対応)
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem('editor_theme');
+    if (saved === 'system' || saved === 'light' || saved === 'dark') {
+      return saved as Theme;
+    }
+    return 'dark';
+  });
   const [activeTheme, setActiveTheme] = useState<'light' | 'dark'>('dark');
+
+  // === 永続化用の副作用 ===
+  useEffect(() => {
+    localStorage.setItem('editor_settings', JSON.stringify(settings));
+  }, [settings]);
+
+  useEffect(() => {
+    localStorage.setItem('editor_theme', theme);
+  }, [theme]);
 
   // コンテキストメニュー用のState (fileIdがない場合は余白右クリック)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; fileId?: string } | null>(null);
@@ -201,9 +248,23 @@ function App() {
     setActiveFileId(newFileId);
     setShowNewFilePalette(false);
     setNewFileNameInput('');
-    setTimeout(() => {
-      editorRef.current?.focus();
-    }, 100);
+    if (editorRef.current) {
+      editorRef.current.focus();
+    }
+  };
+
+  const handleUndo = () => {
+    if (editorRef.current) {
+      editorRef.current.trigger('source', 'editor.action.coreUndo', null);
+      editorRef.current.focus();
+    }
+  };
+
+  const handleRedo = () => {
+    if (editorRef.current) {
+      editorRef.current.trigger('source', 'editor.action.coreRedo', null);
+      editorRef.current.focus();
+    }
   };
 
   // メニューを外側クリックで閉じる
@@ -556,6 +617,16 @@ function App() {
       }
     });
 
+    // コマンドパレットにアクションを追加 (言語の変更 / Change Language)
+    editorInstance.addAction({
+      id: 'change-display-language-action',
+      label: 'Change Display Language / 言語の変更',
+      keybindings: [],
+      run: function () {
+        setShowLangSwitchPalette(true);
+      }
+    });
+
     // === エディタ情報更新リスナー (v18) ===
     editorInstance.onDidChangeCursorPosition((e) => {
       setCursorPos({ line: e.position.lineNumber, column: e.position.column });
@@ -842,7 +913,7 @@ function App() {
     setContextMenu(null);
   };
 
-  const insertMarkdown = (prefix: string, suffix: string, defaultText: string) => {
+  const insertMarkdown = (prefix: string, suffix: string, defaultText: string, insertOnNewLine?: boolean) => {
     const editor = editorRef.current;
     if (!editor) return;
 
@@ -852,34 +923,44 @@ function App() {
     const model = editor.getModel();
     if (!model) return;
 
+    let targetRange: any = selection;
+    let actualPrefix = prefix;
+
+    if (insertOnNewLine) {
+      const lineContent = model.getLineContent(selection.startLineNumber);
+      if (lineContent.trim().length > 0) {
+        // 現在行に文字がある場合は、行末に強制移動して空行をあけて挿入する
+        const maxCol = model.getLineMaxColumn(selection.endLineNumber);
+        targetRange = {
+          startLineNumber: selection.endLineNumber,
+          startColumn: maxCol,
+          endLineNumber: selection.endLineNumber,
+          endColumn: maxCol
+        };
+        actualPrefix = '\n\n' + prefix;
+      }
+    }
+
     const selectedText = model.getValueInRange(selection);
     const textToInsert = selectedText || defaultText;
-    const newText = `${prefix}${textToInsert}${suffix}`;
+    const newText = `${actualPrefix}${textToInsert}${suffix}`;
 
     editor.executeEdits('toolbar', [
       {
-        range: selection,
+        range: targetRange,
         text: newText,
         forceMoveMarkers: true,
       }
     ]);
 
-    if (selectedText) {
-       editor.setSelection({
-        startLineNumber: selection.startLineNumber,
-        startColumn: selection.startColumn,
-        endLineNumber: selection.endLineNumber,
-        endColumn: selection.startColumn + newText.length
-      });
-    } else {
-       editor.setSelection({
-        startLineNumber: selection.startLineNumber,
-        startColumn: selection.startColumn + prefix.length,
-        endLineNumber: selection.endLineNumber,
-        endColumn: selection.startColumn + prefix.length + defaultText.length
-      });
-    }
+    // フォーカスの復元とカーソル位置調整
     editor.focus();
+    // 挿入後に行数が変わった場合、厳密な選択状態の復元は複雑なので、
+    // ここでは一番単純に挿入後の末尾にカーソルを合わせる挙動へとフォールバックします
+    const position = editor.getPosition();
+    if (position) {
+      editor.setPosition(position);
+    }
   };
 
   const handleExport = (contentOverride?: string) => {
@@ -1007,25 +1088,25 @@ function App() {
               onClick={() => setActiveMenu(activeMenu === 'file' ? null : 'file')}
               onMouseEnter={() => activeMenu && setActiveMenu('file')}
             >
-              ファイル
+              {t('menu.file')}
               {activeMenu === 'file' && (
                 <div className="menu-dropdown">
                   <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); openNewFilePalette(); setActiveMenu(null); }}>
-                    <span>新しいファイル</span>
+                    <span>{t('menu.file.new')}</span>
                     <span className="menu-dropdown-shortcut">Ctrl+K, N</span>
                   </div>
                   <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); openFileFromDisk(); setActiveMenu(null); }}>
-                    <span>ファイルを開く</span>
+                    <span>{t('menu.file.open')}</span>
                     <span className="menu-dropdown-shortcut">Ctrl+O</span>
                   </div>
                   <div className="menu-dropdown-separator"></div>
                   <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); handleSave(); }}>
-                    <span>保存</span>
+                    <span>{t('menu.file.save')}</span>
                     <span className="menu-dropdown-shortcut">Ctrl+S</span>
                   </div>
                   <div className="menu-dropdown-separator"></div>
                   <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); handleExport(); setActiveMenu(null); }}>
-                    <span>エクスポート</span>
+                    <span>{t('menu.file.export')}</span>
                   </div>
                 </div>
               )}
@@ -1037,15 +1118,15 @@ function App() {
               onClick={() => setActiveMenu(activeMenu === 'edit' ? null : 'edit')}
               onMouseEnter={() => activeMenu && setActiveMenu('edit')}
             >
-              編集
+              {t('menu.edit')}
               {activeMenu === 'edit' && (
                 <div className="menu-dropdown">
                   <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); triggerUndo(); }}>
-                    <span>元に戻す</span>
+                    <span>{t('menu.edit.undo')}</span>
                     <span className="menu-dropdown-shortcut">Ctrl+Z</span>
                   </div>
                   <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); triggerRedo(); }}>
-                    <span>やり直す</span>
+                    <span>{t('menu.edit.redo')}</span>
                     <span className="menu-dropdown-shortcut">Ctrl+Y</span>
                   </div>
                 </div>
@@ -1058,21 +1139,25 @@ function App() {
               onClick={() => setActiveMenu(activeMenu === 'view' ? null : 'view')}
               onMouseEnter={() => activeMenu && setActiveMenu('view')}
             >
-              表示
+              {t('menu.view')}
               {activeMenu === 'view' && (
                 <div className="menu-dropdown">
                   <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); triggerCommandPalette(); setActiveMenu(null); }}>
-                    <span>コマンドパレット</span>
+                    <span>{t('menu.view.commandPalette')}</span>
                     <span className="menu-dropdown-shortcut">F1</span>
                   </div>
                   <div className="menu-dropdown-separator"></div>
                   <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); setShowPreview(!showPreview); setActiveMenu(null); }}>
-                    <span>プレビューを{showPreview ? '閉じる' : '開く'}</span>
+                    <span>{showPreview ? t('menu.view.previewClose') : t('menu.view.previewOpen')}</span>
                     <span className="menu-dropdown-shortcut">Ctrl+Shift+V</span>
                   </div>
                   <div className="menu-dropdown-separator"></div>
+                  <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); setShowLangSwitchPalette(true); setActiveMenu(null); }}>
+                    <span>{t('menu.view.language')}</span>
+                  </div>
+                  <div className="menu-dropdown-separator"></div>
                   <div className="menu-dropdown-item" onClick={(e) => { e.stopPropagation(); setIsSettingsOpen(true); setActiveMenu(null); }}>
-                    <span>設定</span>
+                    <span>{t('menu.view.settings')}</span>
                     <span className="menu-dropdown-shortcut">Ctrl+,</span>
                   </div>
                 </div>
@@ -1081,13 +1166,13 @@ function App() {
           </div>
         </div>
         <div className="titlebar-section titlebar-center">
-          <button className="command-palette-trigger" onClick={triggerCommandPalette} data-tooltip="コマンドパレットを開く (F1)">
+          <button className="command-palette-trigger" onClick={triggerCommandPalette} data-tooltip={t('titlebar.commandPaletteTooltip')}>
             <Search size={14} />
-            <span>検索またはコマンドを入力...</span>
+            <span>{t('titlebar.searchPlaceholder')}</span>
           </button>
         </div>
         <div className="titlebar-section titlebar-right">
-          <button className="theme-toggle-btn" onClick={toggleTheme} data-tooltip-left={`テーマ切り替え (現在: ${theme})`}>
+          <button className="theme-toggle-btn" onClick={toggleTheme} data-tooltip-left={`${t('titlebar.themeToggle')} (${theme})`}>
             {theme === 'system' ? <Monitor size={16} /> : theme === 'light' ? <Sun size={16} /> : <Moon size={16} />}
           </button>
         </div>
@@ -1098,12 +1183,12 @@ function App() {
         <div className="quickpick-overlay" onClick={() => { setShowLanguagePalette(false); setLanguageSearch(''); }}>
           <div className="quickpick-container" onClick={e => e.stopPropagation()}>
             <div className="quickpick-input-wrapper">
-              <div className="quickpick-title">Select Language Mode</div>
+              <div className="quickpick-title">{t('langPalette.title')}</div>
               <input
                 ref={languageInputRef}
                 className="quickpick-input"
                 type="text"
-                placeholder="Type to search languages..."
+                placeholder={t('langPalette.placeholder')}
                 value={languageSearch}
                 onChange={e => setLanguageSearch(e.target.value)}
                 onKeyDown={handleLanguagePaletteKeyDown}
@@ -1124,7 +1209,7 @@ function App() {
               ))}
               {filteredLanguages.length === 0 && (
                 <div className="quickpick-item" style={{ opacity: 0.5, pointerEvents: 'none' }}>
-                  一致する言語が見つかりません
+                  {t('langPalette.noMatch')}
                 </div>
               )}
             </div>
@@ -1137,12 +1222,12 @@ function App() {
         <div className="quickpick-overlay" onClick={() => setShowNewFilePalette(false)}>
           <div className="quickpick-container" onClick={e => e.stopPropagation()}>
             <div className="quickpick-input-wrapper">
-              <div className="quickpick-title">新しいファイル名を入力してください</div>
+              <div className="quickpick-title">{t('newFile.title')}</div>
               <input
                 ref={newFileInputRef}
                 className="quickpick-input"
                 type="text"
-                placeholder="例: example.md (Enterで作成, Escでキャンセル)"
+                placeholder={t('newFile.placeholder')}
                 value={newFileNameInput}
                 onChange={e => setNewFileNameInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -1153,7 +1238,7 @@ function App() {
               />
             </div>
             <div style={{ padding: '8px 12px', fontSize: '12px', opacity: 0.6, borderTop: '1px solid var(--border-color)' }}>
-              拡張子を省略した場合は .md が自動的に付与されます。
+                            {t('newFile.hint')}
             </div>
           </div>
         </div>
@@ -1172,22 +1257,57 @@ function App() {
             <div className="quickpick-list" style={{ maxHeight: 'none' }}>
               <div className="quickpick-item" onClick={showConfirmPalette.onConfirm}>
                 <div className="quickpick-item-info">
-                  <div className="quickpick-item-label">エクスポートして閉じる</div>
-                  <div className="quickpick-item-desc">編集内容を保存し、エクスポートしてからタブを閉じる</div>
+                  <div className="quickpick-item-label">{t('confirm.exportAndClose')}</div>
+                  <div className="quickpick-item-desc">{t('confirm.exportAndCloseDesc')}</div>
                 </div>
               </div>
               <div className="quickpick-item" onClick={showConfirmPalette.onDeny}>
                 <div className="quickpick-item-info">
-                  <div className="quickpick-item-label" style={{ color: 'var(--accent-color)' }}>エクスポートせずに閉じる</div>
-                  <div className="quickpick-item-desc">何もせずにタブを閉じます</div>
+                  <div className="quickpick-item-label" style={{ color: 'var(--accent-color)' }}>{t('confirm.closeWithoutExport')}</div>
+                  <div className="quickpick-item-desc">{t('confirm.closeWithoutExportDesc')}</div>
                 </div>
               </div>
               <div className="context-menu-separator" style={{ margin: 0 }} />
               <div className="quickpick-item" onClick={showConfirmPalette.onCancel}>
                 <div className="quickpick-item-info">
-                  <div className="quickpick-item-label">キャンセル</div>
-                  <div className="quickpick-item-desc">編集を続行します</div>
+                  <div className="quickpick-item-label">{t('confirm.cancel')}</div>
+                  <div className="quickpick-item-desc">{t('confirm.cancelDesc')}</div>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* === 言語切り替えパレット (v35) === */}
+      {showLangSwitchPalette && (
+        <div className="quickpick-overlay" onClick={() => setShowLangSwitchPalette(false)}>
+          <div className="quickpick-container" onClick={e => e.stopPropagation()}>
+            <div className="quickpick-input-wrapper">
+              <div className="quickpick-title">{t('langSwitch.title')}</div>
+            </div>
+            <div className="quickpick-list" style={{ maxHeight: 'none' }}>
+              <div 
+                className={`quickpick-item ${settings.language === 'ja' ? 'active' : ''}`} 
+                onClick={() => {
+                  setSettings({...settings, language: 'ja'});
+                  configureMonacoLocale('ja');
+                  setShowLangSwitchPalette(false);
+                }}
+              >
+                <Languages size={16} />
+                <span className="quickpick-item-label">{t('langSwitch.ja')}</span>
+              </div>
+              <div 
+                className={`quickpick-item ${settings.language === 'en' ? 'active' : ''}`} 
+                onClick={() => {
+                  setSettings({...settings, language: 'en'});
+                  configureMonacoLocale('en');
+                  setShowLangSwitchPalette(false);
+                }}
+              >
+                <Languages size={16} />
+                <span className="quickpick-item-label">{t('langSwitch.en')}</span>
               </div>
             </div>
           </div>
@@ -1207,7 +1327,7 @@ function App() {
           <div className="drag-overlay">
             <div className="drag-overlay-content">
               <FolderOpen size={48} />
-              <span>このウィンドウにドロップしてファイルを開く</span>
+              <span>{t('dnd.drop')}</span>
             </div>
           </div>
         )}
@@ -1215,22 +1335,29 @@ function App() {
         <div className="activity-bar">
           <div 
             className={`activity-icon ${activeSidebarTab === 'explorer' ? 'active' : ''}`} 
-            data-tooltip-right="エクスプローラー"
+            data-tooltip-right={t('activity.explorer')}
             onClick={() => setActiveSidebarTab('explorer')}
           >
             <Files size={24} />
           </div>
           <div 
             className={`activity-icon ${activeSidebarTab === 'outline' ? 'active' : ''}`} 
-            data-tooltip-right="アウトライン (目次)"
+            data-tooltip-right={t('activity.outline')}
             onClick={() => setActiveSidebarTab('outline')}
           >
             <ListIcon size={24} />
           </div>
+          <div 
+            className={`activity-icon ${activeSidebarTab === 'docs' ? 'active' : ''}`} 
+            data-tooltip-right={t('activity.docs')}
+            onClick={() => setActiveSidebarTab('docs')}
+          >
+            <BookOpen size={24} />
+          </div>
           <div style={{ flex: 1 }}></div>
           <div 
             className={`activity-icon ${(isSettingsOpen || showSettingsTab) ? 'active' : ''}`} 
-            data-tooltip-right="管理 (設定)"
+            data-tooltip-right={t('activity.settings')}
             onClick={() => { setIsSettingsOpen(true); setShowSettingsTab(true); }}
           >
             <Settings size={24} />
@@ -1241,18 +1368,20 @@ function App() {
           <div className="side-bar-header">
             {activeSidebarTab === 'explorer' ? (
               <div className="sidebar-header">
-                <h3>エクスプローラー</h3>
+                <h3>{t('sidebar.explorer')}</h3>
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button className="sidebar-action-btn" onClick={openNewFilePalette} data-tooltip="新しいファイル...">
+                  <button className="sidebar-action-btn" onClick={openNewFilePalette} data-tooltip={t('sidebar.newFile')}>
                     <Plus size={16} />
                   </button>
-                  <button className="sidebar-action-btn" onClick={openFileFromDisk} data-tooltip="ファイルを開く...">
+                  <button className="sidebar-action-btn" onClick={openFileFromDisk} data-tooltip={t('sidebar.openFile')}>
                     <FolderOpen size={16} />
                   </button>
                 </div>
               </div>
+            ) : activeSidebarTab === 'outline' ? (
+              <span style={{ padding: '10px 15px', display: 'block', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.8 }}>{t('sidebar.outline')}</span>
             ) : (
-              <span style={{ padding: '10px 15px', display: 'block', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.8 }}>アウトライン</span>
+              <span style={{ padding: '10px 15px', display: 'block', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px', opacity: 0.8 }}>MARKDOWN DOCS</span>
             )}
           </div>
           <div 
@@ -1303,14 +1432,14 @@ function App() {
                         e.stopPropagation();
                         closeFile(e, file.id);
                       }}
-                      data-tooltip="閉じる"
+                      data-tooltip={t('sidebar.close')}
                     >
                       <X size={14} />
                     </button>
                   </li>
                 ))}
               </ul>
-            ) : (
+            ) : activeSidebarTab === 'outline' ? (
               <div className="outline-list" style={{ padding: '8px 0' }}>
                 {outlineItems.length > 0 ? (
                   outlineItems.map((item, index) => (
@@ -1325,14 +1454,76 @@ function App() {
                   ))
                 ) : (
                   <div style={{ padding: '10px 20px', fontSize: '12px', color: 'var(--activity-icon)' }}>
-                    見出し(#)が見つかりません
+                    {t('sidebar.noHeadings')}
                   </div>
                 )}
+              </div>
+            ) : (
+              // Markdown Docs タブ
+              <div style={{ padding: '12px', fontSize: '13px', lineHeight: 1.6, color: 'var(--text-color)' }}>
+                <p style={{ marginBottom: '16px', fontSize: '12px', opacity: 0.8 }}>{t('docs.intro')}</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  
+                  <div className="docs-item" style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}>
+                    <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}>{t('docs.headings')}</div>
+                    <code style={{ display: 'block', padding: '4px 8px', background: 'var(--input-bg)', borderRadius: '4px', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>
+                      # Heading 1<br/>## Heading 2<br/>### Heading 3
+                    </code>
+                    <div className="preview-pane docs-preview" style={{ padding: '8px', border: '1px solid var(--toolbar-border)', borderRadius: '4px', background: 'var(--editor-bg)' }}>
+                      <h1>Heading 1</h1><h2>Heading 2</h2><h3>Heading 3</h3>
+                    </div>
+                  </div>
+
+                  <div className="docs-item" style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}>
+                    <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}>{t('docs.emphasis')}</div>
+                    <code style={{ display: 'block', padding: '4px 8px', background: 'var(--input-bg)', borderRadius: '4px', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>
+                      **Bold**<br/>*Italic*<br/>~~Strikethrough~~
+                    </code>
+                    <div className="preview-pane docs-preview" style={{ padding: '8px', border: '1px solid var(--toolbar-border)', borderRadius: '4px', background: 'var(--editor-bg)' }}>
+                      <p><strong>Bold</strong><br/><em>Italic</em><br/><del>Strikethrough</del></p>
+                    </div>
+                  </div>
+
+                  <div className="docs-item" style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}>
+                    <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}>{t('docs.lists')}</div>
+                    <code style={{ display: 'block', padding: '4px 8px', background: 'var(--input-bg)', borderRadius: '4px', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>{`- Item 1\n- Item 2\n  - Sub item`}</code>
+                    <div className="preview-pane docs-preview" style={{ padding: '8px', border: '1px solid var(--toolbar-border)', borderRadius: '4px', background: 'var(--editor-bg)' }}>
+                      <ul><li>Item 1</li><li>Item 2<ul><li>Sub item</li></ul></li></ul>
+                    </div>
+                  </div>
+
+                  <div className="docs-item" style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}>
+                    <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}>{t('docs.codeBlock')}</div>
+                    <code style={{ display: 'block', padding: '4px 8px', background: 'var(--input-bg)', borderRadius: '4px', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>
+                      ```javascript<br/>const foo = 'bar';<br/>```
+                    </code>
+                    <div className="preview-pane docs-preview" style={{ padding: '8px', border: '1px solid var(--toolbar-border)', borderRadius: '4px', background: 'var(--editor-bg)' }}>
+                      <pre style={{ margin: 0, padding: '4px' }}><code><span style={{ color: '#569cd6' }}>const</span> foo = <span style={{ color: '#ce9178' }}>'bar'</span>;</code></pre>
+                    </div>
+                  </div>
+
+                  <div className="docs-item" style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}>
+                    <div style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}>{t('docs.alerts')}</div>
+                    <code style={{ display: 'block', padding: '4px 8px', background: 'var(--input-bg)', borderRadius: '4px', marginBottom: '8px', whiteSpace: 'pre-wrap' }}>
+                      &gt; [!NOTE]<br/>&gt; Content here
+                    </code>
+                    <div className="preview-pane docs-preview" style={{ padding: '8px', border: '1px solid var(--toolbar-border)', borderRadius: '4px', background: 'var(--editor-bg)' }}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkAlert]}>
+                        {`> [!NOTE]\n> Note content\n\n> [!WARNING]\n> Warning content`}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: '12px', opacity: 0.7, paddingTop: '8px' }}>
+                    {t('docs.reference')}<a href="https://www.tohoho-web.com/ex/markdown.html" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--accent-color)' }}>{t('docs.referenceLink')}</a>{t('docs.referenceSuffix')}
+                  </div>
+
+                </div>
               </div>
             )}
           </div>
         </div>
-        <div className="resizer-x" onMouseDown={startResizingSidebar} title="ドラッグしてサイズ変更" />
+        <div className="resizer-x" onMouseDown={startResizingSidebar} title={t('resizer.tooltip')} />
         <div className="editor-container">
           <div className="tabs-container">
           {files.map(file => {
@@ -1387,20 +1578,39 @@ function App() {
           {!isSettingsOpen && activeFile && (
             <Toolbar 
               onInsertMarkdown={insertMarkdown} 
-              onExport={handleExport}
+              onExport={handleExport} 
               onTogglePreview={() => setShowPreview(!showPreview)} 
               showPreview={showPreview} 
+              onUndo={handleUndo}
+              onRedo={handleRedo}
             />
           )}
             
-          <div className="split-view-container">
+          {/* モバイル時にプレビューが有効であればクラス preview-mobile-active を付与 */}
+          <div className={`split-view-container ${showPreview && activeFile ? 'preview-mobile-active' : ''}`}>
             {isSettingsOpen ? (
               /* === 設定画面 (タブ内表示) === */
               <div className="settings-tab-content">
-                <h2 className="settings-tab-title">設定</h2>
+                <h2 className="settings-tab-title">{t('settings.title')}</h2>
                 <div className="settings-content">
                   <div className="setting-row">
-                    <span className="setting-label">フォントサイズ</span>
+                    <span className="setting-label">{t('settings.language')}</span>
+                    <select 
+                      className="setting-input" 
+                      style={{ fontFamily: settings.uiFont }}
+                      value={settings.language}
+                      onChange={e => {
+                        const newLang = e.target.value as 'ja' | 'en';
+                        setSettings({...settings, language: newLang});
+                        configureMonacoLocale(newLang);
+                      }}
+                    >
+                      <option value="ja">{t('langSwitch.ja')}</option>
+                      <option value="en">{t('langSwitch.en')}</option>
+                    </select>
+                  </div>
+                  <div className="setting-row">
+                    <span className="setting-label">{t('settings.fontSize')}</span>
                     <input 
                       type="number" 
                       className="setting-input" 
@@ -1410,7 +1620,7 @@ function App() {
                     />
                   </div>
                   <div className="setting-row">
-                    <span className="setting-label">行の高さ (行間)</span>
+                    <span className="setting-label">{t('settings.lineHeight')}</span>
                     <input 
                       type="number" 
                       className="setting-input" 
@@ -1420,56 +1630,73 @@ function App() {
                     />
                   </div>
                   <div className="setting-row">
-                    <span className="setting-label">ミニマップの表示</span>
-                    <input 
-                      type="checkbox" 
-                      className="setting-checkbox" 
-                      checked={settings.minimap} 
-                      onChange={e => setSettings({...settings, minimap: e.target.checked})}
-                    />
+                    <span className="setting-label">{t('settings.minimap')}</span>
+                    <div 
+                      className={`toggle-switch ${settings.minimap ? 'active' : ''}`}
+                      onClick={() => setSettings({...settings, minimap: !settings.minimap})}
+                    >
+                      <span className="toggle-icon">
+                        {settings.minimap ? <Check size={12} strokeWidth={3} /> : <X size={12} strokeWidth={3} />}
+                      </span>
+                    </div>
                   </div>
                   <div className="setting-row">
-                    <span className="setting-label">折り返し</span>
+                    <span className="setting-label">{t('settings.wordWrap')}</span>
                     <select 
                       className="setting-input" 
+                      style={{ fontFamily: settings.uiFont }}
                       value={settings.wordWrap}
                       onChange={e => setSettings({...settings, wordWrap: e.target.value as 'on' | 'off'})}
                     >
-                      <option value="on">オン</option>
-                      <option value="off">オフ</option>
+                      <option value="on">{t('settings.wordWrapOn')}</option>
+                      <option value="off">{t('settings.wordWrapOff')}</option>
                     </select>
                   </div>
                   <div className="setting-row">
-                    <span className="setting-label">アプリのフォント (UI)</span>
+                    <span className="setting-label">{t('settings.uiFont')}</span>
                     <select 
                       className="setting-input" 
-                      style={{ width: '180px' }}
+                      style={{ width: '180px', fontFamily: settings.uiFont }}
                       value={settings.uiFont}
                       onChange={e => setSettings({...settings, uiFont: e.target.value})}
                     >
-                      <option value="consolas, 'Courier New', monospace">Consolas (標準)</option>
+                      <option value="consolas, 'Courier New', monospace">Consolas</option>
                       <option value="'Inter', 'Noto Sans JP', sans-serif">Inter & Noto Sans JP</option>
                       <option value="'Roboto', 'M PLUS 1p', sans-serif">Roboto & M PLUS 1p</option>
                       <option value="'Roboto', 'LINE Seed JP', sans-serif">Roboto & LINE Seed JP</option>
                       <option value="'Google Sans', 'Noto Sans JP', sans-serif">Google Sans & Noto Sans JP</option>
-                      <option value="'Google Sans Code', 'BIZ UDGothic', sans-serif">Google Sans Code & BIZ UD ゴシック</option>
-                      <option value="'Source Code Pro', monospace">Source Code Pro & monospace</option>
+                      <option value="'Google Sans Code', 'BIZ UDGothic', sans-serif">Google Sans Code & BIZ UD</option>
+                      <option value="'Source Code Pro', monospace">Source Code Pro</option>
+                      {settings.language === 'en' && (
+                        <>
+                          <option value="'Inter', sans-serif, monospace">Inter (EN)</option>
+                          <option value="'Roboto', sans-serif, monospace">Roboto (EN)</option>
+                        </>
+                      )}
                     </select>
                   </div>
                   <div className="setting-row">
-                    <span className="setting-label">エディターのフォント</span>
+                    <span className="setting-label">{t('settings.editorFont')}</span>
                     <select 
                       className="setting-input" 
-                      style={{ width: '180px' }}
+                      style={{ width: '180px', fontFamily: settings.uiFont }}
                       value={settings.editorFont}
                       onChange={e => setSettings({...settings, editorFont: e.target.value})}
                     >
-                      <option value="consolas, 'Courier New', monospace">Consolas (標準)</option>
+                      <option value="consolas, 'Courier New', monospace">Consolas</option>
                       <option value="'Fira Code', 'Noto Sans JP', monospace">Fira Code & Noto Sans</option>
                       <option value="'JetBrains Mono', 'Noto Sans JP', monospace">JetBrains Mono & Noto Sans</option>
-                      <option value="'Roboto Mono', 'BIZ UDGothic', monospace">Roboto Mono & BIZ UD ゴシック</option>
+                      <option value="'Roboto Mono', 'BIZ UDGothic', monospace">Roboto Mono & BIZ UD</option>
                       <option value="'Google Sans Code', 'Noto Sans JP', monospace">Google Sans Code & Noto Sans JP</option>
-                      <option value="'JetBrains Mono', 'BIZ UDGothic', monospace">JetBrains Mono & BIZ UD ゴシック</option>
+                      <option value="'JetBrains Mono', 'BIZ UDGothic', monospace">JetBrains Mono & BIZ UD</option>
+                      {settings.language === 'en' && (
+                        <>
+                          <option value="'JetBrains Mono', monospace">JetBrains Mono (EN)</option>
+                          <option value="'Fira Code', monospace">Fira Code (EN)</option>
+                          <option value="'Cascadia Code', monospace">Cascadia Code (EN)</option>
+                          <option value="'Source Code Pro', monospace">Source Code Pro (EN)</option>
+                        </>
+                      )}
                     </select>
                   </div>
                 </div>
@@ -1513,20 +1740,20 @@ function App() {
                       </div>
                       <div className="empty-state-shortcuts">
                         <div className="shortcut-row">
-                          <span className="shortcut-label">コマンドパレットを表示</span>
+                          <span className="shortcut-label">{t('empty.showCommandPalette')}</span>
                           <span className="shortcut-key">F1</span>
                         </div>
                         <div className="shortcut-row">
-                          <span className="shortcut-label">新しいファイル</span>
+                          <span className="shortcut-label">{t('empty.newFile')}</span>
                           <span className="shortcut-key">Ctrl+K, N</span>
                         </div>
                         <div className="shortcut-row">
-                          <span className="shortcut-label">ファイルを開く</span>
+                          <span className="shortcut-label">{t('empty.openFile')}</span>
                           <span className="shortcut-key">Ctrl+O</span>
                         </div>
                         <div className="shortcut-row">
-                          <span className="shortcut-label">テーマを切り替え</span>
-                          <span className="shortcut-key">F1 {'>'} Theme</span>
+                          <span className="shortcut-label">{t('empty.toggleTheme')}</span>
+                          <span className="shortcut-key">F1 &gt; Theme</span>
                         </div>
                       </div>
                     </div>
@@ -1536,10 +1763,10 @@ function App() {
             
             {showPreview && activeFile && (
               <>
-                <div className="resizer-x" onMouseDown={startResizingPreview} title="ドラッグしてサイズ変更" />
+                <div className="resizer-x" onMouseDown={startResizingPreview} title={t('resizer.tooltip')} />
                 <div className="preview-pane" style={{ width: previewWidth, flex: 'none' }}>
                   <ReactMarkdown 
-                    remarkPlugins={[remarkGfm]}
+                    remarkPlugins={[remarkGfm, remarkAlert]}
                     components={{
                       code({ className, children, ...props }) {
                         const match = /language-(\w+)/.exec(className || '');
@@ -1576,7 +1803,7 @@ function App() {
         <div className="status-bar-left">
           {isChordWaiting && (
             <div className="status-bar-item">
-              (Ctrl+K) が押されました。2 番目のキーを待っています...
+              {t('status.chordWaiting')}
             </div>
           )}
         </div>
@@ -1584,13 +1811,13 @@ function App() {
         <div className="status-bar-right">
           {selectionCount > 0 && (
             <div className="status-bar-item">
-              {selectionCount} 文字選択
+              {selectionCount} {t('status.charSelected')}
             </div>
           )}
           <div 
             className="status-bar-item highlight" 
             style={{ cursor: 'pointer' }}
-            title="行/列に移動する (Ctrl+G)"
+            title={t('status.gotoLine')}
             onClick={() => {
               if (editorRef.current) {
                 // editorにフォーカスしてGo To Lineパレットを開かせる
@@ -1599,9 +1826,9 @@ function App() {
               }
             }}
           >
-            行 {cursorPos.line}、列 {cursorPos.column}
+            {t('status.line')} {cursorPos.line}, {t('status.col')} {cursorPos.column}
           </div>
-          <div className="status-bar-item" onClick={toggleEol} style={{ cursor: 'pointer' }} data-tooltip="改行コードの切り替え">
+          <div className="status-bar-item" onClick={toggleEol} style={{ cursor: 'pointer' }} data-tooltip={t('status.eolTooltip')}>
             {eolMode}
           </div>
           <div className="status-bar-item">
@@ -1610,7 +1837,7 @@ function App() {
           <span 
             className="status-bar-item highlight"
             onClick={() => setShowLanguagePalette(true)}
-            data-tooltip="言語モードの選択"
+            data-tooltip={t('status.langMode')}
           >
             {activeFile?.language ? (activeFile.language.charAt(0).toUpperCase() + activeFile.language.slice(1)) : 'Markdown'}
           </span>
@@ -1628,21 +1855,21 @@ function App() {
           >
             {contextMenu.fileId ? (
               <>
-                <div className="context-menu-item" onClick={handleContextOpen}>開く</div>
+                <div className="context-menu-item" onClick={handleContextOpen}>{t('context.open')}</div>
                 <div className="context-menu-separator" />
-                <div className="context-menu-item" onClick={handleContextRename}>名前の変更</div>
+                <div className="context-menu-item" onClick={handleContextRename}>{t('context.rename')}</div>
                 <div className="context-menu-separator" />
                 <div 
                   className={`context-menu-item ${files.length <= 1 ? 'disabled' : 'danger'}`} 
                   onClick={files.length > 1 ? handleContextDelete : undefined}
                 >
-                  削除
+                  {t('context.delete')}
                 </div>
               </>
             ) : (
               <>
-                <div className="context-menu-item" onClick={() => { openNewFilePalette(); setContextMenu(null); }}>新しいファイル</div>
-                <div className="context-menu-item" onClick={() => { openFileFromDisk(); setContextMenu(null); }}>ファイルを開く</div>
+                <div className="context-menu-item" onClick={() => { openNewFilePalette(); setContextMenu(null); }}>{t('context.newFile')}</div>
+                <div className="context-menu-item" onClick={() => { openFileFromDisk(); setContextMenu(null); }}>{t('context.openFile')}</div>
               </>
             )}
           </div>

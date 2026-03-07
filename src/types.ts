@@ -10,6 +10,7 @@ export interface EditorFile {
 
 // エディターの設定の型定義
 export interface EditorSettings {
+  language: 'ja' | 'en';
   fontSize: number;
   lineHeight: number;
   minimap: boolean;
@@ -19,6 +20,7 @@ export interface EditorSettings {
 }
 
 export const DEFAULT_SETTINGS: EditorSettings = {
+  language: 'ja',
   fontSize: 14,
   lineHeight: 24,
   minimap: false,

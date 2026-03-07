@@ -8,7 +8,7 @@
 }
 
 :root {
-  /* 繝繝ｼ繧ｯ繝��繝� (繝�ヵ繧ｩ繝ｫ繝�) */
+  /* ダークテーマ (デフォルト) */
   --bg-color: #1e1e1e;
   --text-color: #cccccc;
   
@@ -47,7 +47,7 @@
 }
 
 [data-theme="light"] {
-  /* 繝ｩ繧､繝医ユ繝ｼ繝� */
+  /* ライトテーマ */
   --bg-color: #ffffff;
   --text-color: #333333;
   
@@ -94,7 +94,7 @@ body {
   overflow: hidden;
 }
 
-/* 蜈ｨ菴薙�繧ｳ繝ｳ繝�リ */
+/* 全体のコンテナ */
 .app-container {
   display: flex;
   flex-direction: column;
@@ -102,7 +102,7 @@ body {
   width: 100vw;
 }
 
-/* 繧ｿ繧､繝医Ν繝舌 */
+/* タイトルバー */
 .app-titlebar {
   background-color: var(--titlebar-bg);
   border-bottom: 1px solid var(--titlebar-border);
@@ -181,6 +181,7 @@ body {
   display: flex;
   align-items: center;
   gap: 0;
+  white-space: nowrap;
 }
 
 .menu-item {
@@ -190,6 +191,7 @@ body {
   cursor: pointer;
   user-select: none;
   font-size: 13px;
+  white-space: nowrap;
 }
 .menu-item:hover, .menu-item.active {
   background-color: rgba(128, 128, 128, 0.2);
@@ -205,9 +207,30 @@ body {
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   min-width: 200px;
   z-index: 1000;
-  padding: 4px 0;
   display: flex;
   flex-direction: column;
+}
+
+/* === アラート等用の横並びポップアウトメニュー === */
+.alert-popup-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  background-color: var(--toolbar-bg);
+  border: 1px solid var(--toolbar-border);
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  display: flex;
+  flex-direction: row;
+  padding: 4px;
+  gap: 2px;
+  white-space: nowrap;
+}
+
+[data-theme="light"] .alert-popup-menu {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .menu-dropdown-item {
@@ -245,14 +268,14 @@ body {
   z-index: 999;
 }
 
-/* 繝｡繧､繝ｳ鬆伜沺 (繝舌�縺ｨ繧ｨ繝�ぅ繧ｿ繝ｼ) */
+/* メイン領域 (バーとエディター) */
 .app-main {
   display: flex;
   flex: 1;
   overflow: hidden;
 }
 
-/* 繧｢繧ｯ繝�ぅ繝薙ユ繧｣繝舌� (荳逡ｪ蟾ｦ縺ｮ邏ｰ縺�ｸｯ) */
+/* アクティビティバー (一番左の細い帯) */
 .activity-bar {
   width: 48px;
   background-color: var(--activity-bg);
@@ -283,7 +306,7 @@ body {
   border-left-color: var(--activity-icon-active);
 }
 
-/* 繧ｵ繧､繝峨ヰ繝ｼ (繝輔ぃ繧､繝ｫ繝�Μ繝ｼ縺ｪ縺ｩ縲∽ｻ雁屓縺ｯ繧ｿ繧､繝医Ν縺ｮ縺ｿ) */
+/* サイドバー (ファイルツリーなど、今回はタイトルのみ) */
 .side-bar {
   width: 250px;
   background-color: var(--sidebar-bg);
@@ -636,10 +659,53 @@ body {
   border-color: var(--accent-color);
 }
 
-.setting-checkbox {
-  width: 16px;
-  height: 16px;
+/* トグルスイッチ (ミニマップ等のON/OFF用) */
+.toggle-switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+  background-color: rgba(128, 128, 128, 0.35);
+  border-radius: 11px;
   cursor: pointer;
+  transition: background-color 0.25s ease;
+  flex-shrink: 0;
+}
+.toggle-switch.active {
+  background-color: var(--accent-color);
+}
+.toggle-switch::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  background-color: #fff;
+  border-radius: 50%;
+  transition: transform 0.25s ease;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+.toggle-switch.active::after {
+  transform: translateX(18px);
+}
+.toggle-switch .toggle-icon {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+  transition: left 0.25s ease;
+  pointer-events: none;
+  color: #000;
+}
+.toggle-switch.active .toggle-icon {
+  left: 20px;
+  color: var(--accent-color);
 }
 
 /* === プレビュー領域 === */
@@ -1174,4 +1240,105 @@ body {
 }
 [data-theme="light"] .tabs-container::-webkit-scrollbar-thumb {
   background-color: rgba(0, 0, 0, 0.1);
+}
+
+/* === スマートフォン・モバイル対応 (v34) レスポンシブ構成 === */
+@media (max-width: 768px) {
+  /* 全体の縦積み化 */
+  .app-main {
+    flex-direction: column;
+  }
+
+  /* アクティビティバー（一番左のアイコン一覧）をページ上部または下部に配置することも可能だが、
+     ここではサイドバーの上（縦方向に並べる）か横に置く。元のデザインを保ちつつ横幅を確保するため上部へ */
+  .activity-bar {
+    width: 100%;
+    height: 48px;
+    flex-direction: row;
+    border-right: none;
+    border-bottom: 1px solid var(--sidebar-border);
+  }
+  
+  .activity-bar-top, .activity-bar-bottom {
+    flex-direction: row;
+  }
+  
+  .activity-btn {
+    width: 48px;
+    height: 48px;
+  }
+
+  /* サイドバー（エクスプローラーなど）は幅を100%にし、高さを固定（縦積み） */
+  .side-bar {
+    width: 100% !important; 
+    height: 30vh;
+    border-right: none;
+    border-bottom: 1px solid var(--sidebar-border);
+  }
+
+  /* ドラッグで幅を変更するバーは無効化 */
+  .resizer-x {
+    display: none !important;
+  }
+
+  /* 横並びのコンテナを縦並びに */
+  .split-view-container {
+    flex-direction: column;
+  }
+
+  /* --- プレビュー全画面切り替え表示のロジック ---
+     App.tsx 側で preview-mobile-active などのクラスを付与している場合はそれを使うが、
+     現在 showPreview 時に .preview-pane が描画されるため、
+     .preview-pane が存在する場合は .editor-pane を隠すというCSSにする。
+     ただし兄弟要素のため、親要素 (.split-view-container) にクラスが付いていないと制御が難しい。
+     => そこで、ツール側で追加したクラス ".preview-mobile-active" を用いるか、
+        ここだけは React 側で render を制御する。 (今回はApp.tsxで制御済み/制御予定)
+  */
+
+  /* ツールバーの折り返し（画面外に見切れないようにする） */
+  .editor-toolbar {
+    height: auto;
+    min-height: 40px;
+    padding: 4px;
+  }
+  .toolbar-inner {
+    flex-wrap: wrap;
+    height: auto;
+    gap: 4px;
+  }
+  .toolbar-group {
+    padding-right: 4px;
+    margin-right: 4px;
+    flex-wrap: wrap;
+  }
+
+  /* エディタとプレビューの幅を100%占有 */
+  .editor-pane, .preview-pane {
+    width: 100% !important;
+  }
+
+  /* プレビューがON（.preview-mobile-active）になった場合、エディターを非表示にして全画面表示にする挙動 */
+  .preview-mobile-active .editor-pane {
+    display: none !important;
+  }
+  .preview-mobile-active .preview-pane {
+    display: block !important;
+    max-width: 100% !important;
+    border-left: none !important;
+  }
+
+  /* タブのスクロール対応（すでに横スクロール仕様だが広めに取る） */
+  .tabs-container {
+    flex-wrap: nowrap;
+  }
+  .editor-tab {
+    flex-shrink: 0;
+  }
+
+  /* クイックピック (Ctrl+K, F1 など) をスマホ幅に縮小 */
+  .quickpick-container,
+  .monaco-editor .quick-input-widget {
+    width: 95% !important;
+    top: 10px !important;
+  }
 }
