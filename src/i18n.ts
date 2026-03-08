@@ -25,6 +25,8 @@ const ja: TranslationDict = {
   'menu.view.previewClose': 'プレビューを閉じる',
   'menu.view.settings': '設定',
   'menu.view.language': '言語の変更',
+  'menu.view.toggleCommandBar': 'コマンドバーの表示切替',
+  'menu.compact.tooltip': 'メニュー',
 
   // === タイトルバー ===
   'titlebar.searchPlaceholder': '検索またはコマンドを入力...',
@@ -67,6 +69,13 @@ const ja: TranslationDict = {
   'settings.uiFont': 'アプリのフォント (UI)',
   'settings.editorFont': 'エディターのフォント',
   'settings.language': 'アプリの言語 (Language)',
+  'settings.menuBarVisibility': 'メニューバーの表示',
+  'settings.menuBar.visible': '常に表示',
+  'settings.menuBar.hidden': '完全に非表示',
+  'settings.menuBar.compact': 'コンパクト（ハンバーガーメニュー）',
+  'settings.menuBar.toggle': 'Alt キーで表示切替',
+  'settings.showCommandBar': 'コマンドバーを表示する',
+  'settings.resetDefaults': 'デフォルトに戻す',
 
   // === ステータスバー ===
   'status.chordWaiting': '(Ctrl+K) が押されました。2 番目のキーを待っています...',
@@ -126,6 +135,9 @@ const ja: TranslationDict = {
   'langSwitch.title': '表示言語の変更',
   'langSwitch.ja': '日本語',
   'langSwitch.en': 'English',
+
+  // === ツールバー ===
+  'toolbar.save': '保存',
 };
 
 // 英語の翻訳辞書
@@ -145,6 +157,8 @@ const en: TranslationDict = {
   'menu.view.previewClose': 'Close Preview',
   'menu.view.settings': 'Settings',
   'menu.view.language': 'Change Language',
+  'menu.view.toggleCommandBar': 'Toggle Command Bar',
+  'menu.compact.tooltip': 'Menu',
 
   // === Title bar ===
   'titlebar.searchPlaceholder': 'Search or enter a command...',
@@ -187,6 +201,13 @@ const en: TranslationDict = {
   'settings.uiFont': 'UI Font',
   'settings.editorFont': 'Editor Font',
   'settings.language': 'Language',
+  'settings.menuBarVisibility': 'Menu Bar Visibility',
+  'settings.menuBar.visible': 'Always Visible',
+  'settings.menuBar.hidden': 'Hidden',
+  'settings.menuBar.compact': 'Compact (Hamburger Menu)',
+  'settings.menuBar.toggle': 'Toggle with Alt Key',
+  'settings.showCommandBar': 'Show Command Bar',
+  'settings.resetDefaults': 'Reset to Defaults',
 
   // === Status bar ===
   'status.chordWaiting': '(Ctrl+K) was pressed. Waiting for second key...',
@@ -243,8 +264,11 @@ const en: TranslationDict = {
 
   // === Language switch palette ===
   'langSwitch.title': 'Change Display Language',
-  'langSwitch.ja': '日本語',
+  'langSwitch.ja': 'Japanese',
   'langSwitch.en': 'English',
+
+  // === Toolbar ===
+  'toolbar.save': 'Save',
 };
 
 // 翻訳辞書のマップ

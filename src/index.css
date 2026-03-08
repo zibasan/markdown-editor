@@ -94,12 +94,41 @@ body {
   overflow: hidden;
 }
 
+/* === カスタムスクロールバー === */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(121, 121, 121, 0.4);
+  background-clip: padding-box;
+  border: 1px solid transparent;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(100, 100, 100, 0.7);
+  background-clip: padding-box;
+  border: 1px solid transparent;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 /* 全体のコンテナ */
 .app-container {
   display: flex;
   flex-direction: column;
   height: 100vh;
   width: 100vw;
+  /* JSのtransformで縮小する際の起点 */
+  transform-origin: top left;
 }
 
 /* タイトルバー */
@@ -246,6 +275,14 @@ body {
   background-color: var(--button-active);
   color: #fff;
 }
+.menu-dropdown-item.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.menu-dropdown-item.disabled:hover {
+  background-color: transparent;
+  color: var(--text-color);
+}
 .menu-dropdown-shortcut {
   font-size: 11px;
   opacity: 0.6;
@@ -286,6 +323,7 @@ body {
   align-items: center;
   padding-top: 0;
   flex-shrink: 0;
+  z-index: 50; /* モバイル用オーバーレイより上に持ってくるかも */
 }
 
 .activity-icon {
@@ -314,6 +352,16 @@ body {
   border-right: 1px solid var(--sidebar-border);
   display: flex;
   flex-direction: column;
+  transition:
+    width 0.2s ease,
+    opacity 0.2s ease;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.side-bar.sidebar-closed {
+  width: 0 !important; /* JSによるstyle={{width: ...}}を上書き */
+  opacity: 0;
+  border-right: none;
 }
 
 .side-bar-header {
@@ -665,6 +713,13 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding-left: 10px;
+  border-left: 2px solid transparent;
+  transition: border-color 0.15s ease;
+}
+
+.setting-row.modified {
+  border-left-color: #ff8f00;
 }
 
 .setting-label {
@@ -678,8 +733,89 @@ body {
   color: var(--text-color);
   padding: 6px 8px;
   border-radius: 4px;
-  width: 100px;
+  width: auto;
+  min-width: 120px;
+  max-width: 300px;
   outline: none;
+}
+
+/* 数値入力は少し狭く */
+.setting-input[type='number'] {
+  min-width: 60px;
+  width: 80px;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+/* ネイティブの数値ステッパーは非表示（カスタムボタンを使用） */
+.setting-input[type='number']::-webkit-outer-spin-button,
+.setting-input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* 設定画面の数値調整コントロール */
+.setting-number-control {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--toolbar-border);
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: var(--toolbar-bg);
+}
+
+.setting-number-control:focus-within {
+  border-color: var(--accent-color);
+}
+
+.setting-number-input.setting-input {
+  border: none;
+  border-radius: 0;
+  min-width: 64px;
+  width: 72px;
+  max-width: none;
+  padding: 6px 8px;
+  background: transparent;
+  text-align: right;
+}
+
+.setting-number-input.setting-input:focus {
+  border-color: transparent;
+}
+
+.setting-number-buttons {
+  width: 20px;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid var(--toolbar-border);
+  background-color: var(--toolbar-bg);
+  background-color: color-mix(in srgb, var(--toolbar-bg) 88%, #ffffff 12%);
+}
+
+.setting-step-btn {
+  border: none;
+  background: transparent;
+  color: #9aa0aa;
+  color: color-mix(in srgb, var(--text-color) 78%, #808080 22%);
+  height: 14px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.setting-step-btn + .setting-step-btn {
+  border-top: 1px solid var(--toolbar-border);
+}
+
+.setting-step-btn:hover {
+  background-color: var(--button-hover);
+  color: var(--text-color);
+}
+
+.setting-step-btn:active {
+  background-color: var(--button-active);
 }
 .setting-input:focus {
   border-color: var(--accent-color);
@@ -727,7 +863,7 @@ body {
   z-index: 1;
   transition: left 0.25s ease;
   pointer-events: none;
-  color: #000;
+  color: #8a8a8a;
 }
 .toggle-switch.active .toggle-icon {
   left: 20px;
@@ -988,7 +1124,7 @@ body {
 }
 .context-menu-item.disabled {
   opacity: 0.4;
-  cursor: default;
+  cursor: not-allowed;
 }
 .context-menu-item.disabled:hover {
   background-color: transparent;
@@ -1030,6 +1166,34 @@ body {
   font-weight: 400;
   margin-bottom: 24px;
   color: var(--text-color);
+}
+
+.settings-tab-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.settings-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--toolbar-border);
+  background-color: var(--toolbar-bg);
+  color: var(--text-color);
+  border-radius: 6px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.settings-reset-btn:hover {
+  background-color: var(--button-hover);
+}
+
+.settings-reset-btn:active {
+  background-color: var(--button-active);
 }
 
 /* === D&D オーバーレイ === */
@@ -1304,6 +1468,10 @@ body {
   color: var(--text-color);
 }
 
+.settings-tab-header .settings-tab-title {
+  margin-bottom: 0;
+}
+
 /* === ステータスバーのリデザイン (v18) === */
 .status-bar {
   height: 22px;
@@ -1377,105 +1545,74 @@ body {
   background-color: rgba(0, 0, 0, 0.1);
 }
 
-/* === スマートフォン・モバイル対応 (v34) レスポンシブ構成 === */
-@media (max-width: 768px) {
-  /* 全体の縦積み化 */
-  .app-main {
-    flex-direction: column;
-  }
+/* === ユーティリティ === */
+.hidden {
+  display: none !important;
+}
 
-  /* アクティビティバー（一番左のアイコン一覧）をページ上部または下部に配置することも可能だが、
-     ここではサイドバーの上（縦方向に並べる）か横に置く。元のデザインを保ちつつ横幅を確保するため上部へ */
-  .activity-bar {
-    width: 100%;
-    height: 48px;
-    flex-direction: row;
-    border-right: none;
-    border-bottom: 1px solid var(--sidebar-border);
-  }
+/* === ハンバーガーメニュー (compact モード & 階層化対応) === */
+.hamburger-context-menu {
+  position: absolute;
+  z-index: 10000;
+  min-width: 140px;
+}
 
-  .activity-bar-top,
-  .activity-bar-bottom {
-    flex-direction: row;
-  }
+.context-menu-item.has-submenu {
+  position: relative;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  padding-right: 10px;
+}
 
-  .activity-btn {
-    width: 48px;
-    height: 48px;
-  }
+.context-menu-item.has-submenu::after {
+  content: '▶';
+  font-size: 8px;
+  opacity: 0.5;
+  margin-left: 12px;
+}
 
-  /* サイドバー（エクスプローラーなど）は幅を100%にし、高さを固定（縦積み） */
-  .side-bar {
-    width: 100% !important;
-    height: 30vh;
-    border-right: none;
-    border-bottom: 1px solid var(--sidebar-border);
-  }
+.context-menu-item.has-submenu.active {
+  background-color: var(--button-active);
+  color: white;
+}
 
-  /* ドラッグで幅を変更するバーは無効化 */
-  .resizer-x {
-    display: none !important;
-  }
+.context-menu-item.has-submenu.active::after {
+  opacity: 1;
+}
 
-  /* 横並びのコンテナを縦並びに */
-  .split-view-container {
-    flex-direction: column;
-  }
+/* サブメニューの共通スタイル */
+.hamburger-sub-menu {
+  position: absolute;
+  top: 0;
+  left: 100%;
+  margin-left: 2px;
+  background-color: var(--sidebar-bg);
+  border: 1px solid var(--sidebar-border);
+  border-radius: 4px;
+  padding: 4px;
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  z-index: 10002;
+}
 
-  /* --- プレビュー全画面切り替え表示のロジック ---
-     App.tsx 側で preview-mobile-active などのクラスを付与している場合はそれを使うが、
-     現在 showPreview 時に .preview-pane が描画されるため、
-     .preview-pane が存在する場合は .editor-pane を隠すというCSSにする。
-     ただし兄弟要素のため、親要素 (.split-view-container) にクラスが付いていないと制御が難しい。
-     => そこで、ツール側で追加したクラス ".preview-mobile-active" を用いるか、
-        ここだけは React 側で render を制御する。 (今回はApp.tsxで制御済み/制御予定)
-  */
+/* === タイトルバー中央のタイトル表示 (コマンドバー非表示用) === */
+.titlebar-center-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-color);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 400px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  user-select: none;
+  cursor: default;
+  transition: background-color 0.2s;
+}
 
-  /* ツールバーの折り返し（画面外に見切れないようにする） */
-  .editor-toolbar {
-    height: auto;
-    min-height: 40px;
-    padding: 4px;
-  }
-  .toolbar-inner {
-    flex-wrap: wrap;
-    height: auto;
-    gap: 4px;
-  }
-  .toolbar-group {
-    padding-right: 4px;
-    margin-right: 4px;
-    flex-wrap: wrap;
-  }
-
-  /* エディタとプレビューの幅を100%占有 */
-  .editor-pane,
-  .preview-pane {
-    width: 100% !important;
-  }
-
-  /* プレビューがON（.preview-mobile-active）になった場合、エディターを非表示にして全画面表示にする挙動 */
-  .preview-mobile-active .editor-pane {
-    display: none !important;
-  }
-  .preview-mobile-active .preview-pane {
-    display: block !important;
-    max-width: 100% !important;
-    border-left: none !important;
-  }
-
-  /* タブのスクロール対応（すでに横スクロール仕様だが広めに取る） */
-  .tabs-container {
-    flex-wrap: nowrap;
-  }
-  .editor-tab {
-    flex-shrink: 0;
-  }
-
-  /* クイックピック (Ctrl+K, F1 など) をスマホ幅に縮小 */
-  .quickpick-container,
-  .monaco-editor .quick-input-widget {
-    width: 95% !important;
-    top: 10px !important;
-  }
+.titlebar-center-title:hover {
+  background-color: var(--toolbar-hover);
 }

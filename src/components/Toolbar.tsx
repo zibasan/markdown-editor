@@ -13,13 +13,13 @@ import {
   Quote,
   Code,
   Link as LinkIcon,
-  Download,
   Eye,
   EyeOff,
   Table,
   ListTodo,
   Strikethrough,
   AlertTriangle,
+  Save,
   Undo,
   Redo,
   Info,
@@ -35,7 +35,7 @@ interface ToolbarProps {
     defaultText: string,
     insertOnNewLine?: boolean
   ) => void;
-  onExport: () => void;
+  onSave: () => void;
   onTogglePreview: () => void;
   showPreview: boolean;
   onUndo: () => void;
@@ -44,7 +44,7 @@ interface ToolbarProps {
 
 export function Toolbar({
   onInsertMarkdown,
-  onExport,
+  onSave,
   onTogglePreview,
   showPreview,
   onUndo,
@@ -288,12 +288,8 @@ export function Toolbar({
 
         <div className="toolbar-separator" />
         <div className="toolbar-group">
-          <button
-            className="toolbar-btn"
-            onClick={onExport}
-            data-tooltip="Markdownとして保存 (エクスポート)"
-          >
-            <Download size={16} />
+          <button className="toolbar-btn" onClick={onSave} data-tooltip="保存 (Ctrl+S)">
+            <Save size={16} />
           </button>
         </div>
 

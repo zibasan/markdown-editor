@@ -20,6 +20,10 @@ import {
   FolderOpen,
   BookOpen,
   Languages,
+  Menu,
+  ChevronUp,
+  ChevronDown,
+  RotateCcw,
 } from 'lucide-react';
 import type { EditorFile, EditorSettings } from './types';
 import { DEFAULT_SETTINGS } from './types';
@@ -31,7 +35,7 @@ import 'remark-github-blockquote-alert/alert.css';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './index.css';
-import logoImage from './assets/vite.svg';
+import logoImage from './assets/logo.svg';
 
 type Theme = 'system' | 'light' | 'dark';
 type SidebarTab = 'explorer' | 'outline' | 'docs';
@@ -77,6 +81,40 @@ function App() {
   const [files, setFiles] = useState<EditorFile[]>([]);
   const [activeFileId, setActiveFileId] = useState<string>('');
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('explorer');
+  // サイドバーの開閉状態 (画面が狭い場合は初期で閉じておく)
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth > 768);
+
+  // === スマホ向け等 ズーム(scale)の自動調整 ===
+  const [appScale, setAppScale] = useState(1);
+  useEffect(() => {
+    const calcScale = () => {
+      const isLandscape = window.innerWidth > window.innerHeight;
+      const baseIdealWidth = isLandscape ? 800 : 400;
+
+      if (window.innerWidth < baseIdealWidth) {
+        setAppScale(window.innerWidth / baseIdealWidth);
+      } else {
+        setAppScale(1);
+      }
+    };
+
+    calcScale();
+    window.addEventListener('resize', calcScale);
+
+    return () => window.removeEventListener('resize', calcScale);
+  }, []);
+
+  // === メニューバー表示制御 ===
+  // Altキーで一時的にメニューバーを表示するためのフラグ (toggleモード用)
+  const [isMenuBarVisibleByAlt, setIsMenuBarVisibleByAlt] = useState(false);
+  // ハンバーガーメニューのコンテキストメニュー表示用
+  const [hamburgerMenu, setHamburgerMenu] = useState<{ x: number; y: number } | null>(null);
+  // ハンバーガーメニュー内のサブメニュー表示状態 ('file' | 'edit' | 'view' | null)
+  const [hamburgerSubMenu, setHamburgerSubMenu] = useState<string | null>(null);
+  // メニューバー右クリック時のコンテキストメニュー
+  const [titleBarContextMenu, setTitleBarContextMenu] = useState<{ x: number; y: number } | null>(
+    null
+  );
 
   // 設定機能のState (localStorage対応)
   const [settings, setSettings] = useState<EditorSettings>(() => {
@@ -100,6 +138,45 @@ function App() {
   // v35: 言語切り替えパレット用の State
   const [showLangSwitchPalette, setShowLangSwitchPalette] = useState(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
+
+  // === effectiveMenuBarMode: 画面幅が狭い時は自動で compact に切り替え ===
+  const effectiveMenuBarMode = useMemo(() => {
+    // appScale < 1 → スマホ等で画面が狭い → 自動で compact に
+    if (appScale < 1) return 'compact';
+
+    return settings.menuBarVisibility;
+  }, [appScale, settings.menuBarVisibility]);
+
+  // === Alt キーでメニューバーを一時表示 (toggle モード用) ===
+  useEffect(() => {
+    if (effectiveMenuBarMode !== 'toggle') {
+      setIsMenuBarVisibleByAlt(false);
+
+      return;
+    }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Alt') {
+        e.preventDefault();
+        setIsMenuBarVisibleByAlt((prev) => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [effectiveMenuBarMode]);
+
+  // === コンテキストメニューを外側クリックで閉じる ===
+  useEffect(() => {
+    if (!hamburgerMenu && !titleBarContextMenu) return;
+    const handleClick = () => {
+      setHamburgerMenu(null);
+      setHamburgerSubMenu(null);
+      setTitleBarContextMenu(null);
+    };
+    window.addEventListener('click', handleClick);
+
+    return () => window.removeEventListener('click', handleClick);
+  }, [hamburgerMenu, titleBarContextMenu]);
 
   // ペインの幅管理State
   const [sidebarWidth, setSidebarWidth] = useState(250);
@@ -171,12 +248,38 @@ function App() {
   const [eolMode, setEolMode] = useState<'LF' | 'CRLF'>('LF');
 
   const activeFile = files.find((f) => f.id === activeFileId);
+  const hasActiveFile = Boolean(activeFile);
+  const isSettingModified = <K extends keyof EditorSettings>(key: K) => {
+    return settings[key] !== DEFAULT_SETTINGS[key];
+  };
+
+  const resetSettingsToDefault = () => {
+    setSettings(DEFAULT_SETTINGS);
+    configureMonacoLocale(DEFAULT_SETTINGS.language);
+  };
 
   // === 主要な操作関数 (ホイスティング対策で上部に配置) ===
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 4000);
+  };
+
+  const clamp = (value: number, min: number, max: number) => {
+    return Math.min(max, Math.max(min, value));
+  };
+
+  const setNumericSetting = (
+    key: 'fontSize' | 'lineHeight',
+    rawValue: number,
+    fallback: number,
+    min: number,
+    max: number
+  ) => {
+    const nextValue = Number.isFinite(rawValue) ? clamp(rawValue, min, max) : fallback;
+    setSettings((prev) =>
+      key === 'fontSize' ? { ...prev, fontSize: nextValue } : { ...prev, lineHeight: nextValue }
+    );
   };
 
   const isSupportedFile = (file: File): boolean => {
@@ -1314,177 +1417,194 @@ function App() {
   };
 
   return (
-    <div className="app-container">
-      <header className="app-titlebar">
+    <div
+      className="app-container"
+      style={{
+        transform: `scale(${appScale})`,
+        transformOrigin: 'top left',
+        // スケールさせた分だけ、親の幅と高さを拡張して、内側の要素が100%になるようにする
+        width: appScale < 1 ? `calc(100vw / ${appScale})` : '100vw',
+        height: appScale < 1 ? `calc(100vh / ${appScale})` : '100vh',
+        overflow: 'hidden',
+      }}
+    >
+      <header
+        className="app-titlebar"
+        onContextMenu={(e) => {
+          e.preventDefault();
+          setTitleBarContextMenu({ x: e.clientX, y: e.clientY });
+        }}
+      >
         <div className="titlebar-section">
           {/* vscode風アプリアイコンの代用 */}
           <div style={{ padding: '0 8px', display: 'flex' }}>
             <img src={logoImage} alt="App Icon" style={{ width: 16, height: 16 }} />
           </div>
 
-          {/* メニューバー */}
-          <div className="menu-bar">
-            {/* ファイル メニュー */}
-            <div
-              className={`menu-item ${activeMenu === 'file' ? 'active' : ''}`}
-              onClick={() => setActiveMenu(activeMenu === 'file' ? null : 'file')}
-              onMouseEnter={() => activeMenu && setActiveMenu('file')}
-            >
-              {t('menu.file')}
-              {activeMenu === 'file' && (
-                <div className="menu-dropdown">
-                  <div
-                    className="menu-dropdown-item"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openNewFilePalette();
-                      setActiveMenu(null);
-                    }}
-                  >
-                    <span>{t('menu.file.new')}</span>
-                    <span className="menu-dropdown-shortcut">Ctrl+K, N</span>
+          {/* メニューバー (effectiveMenuBarMode に応じて表示/非表示) */}
+          {(effectiveMenuBarMode === 'visible' ||
+            (effectiveMenuBarMode === 'toggle' && isMenuBarVisibleByAlt)) && (
+            <div className="menu-bar">
+              {/* ファイル メニュー */}
+              <div
+                className={`menu-item ${activeMenu === 'file' ? 'active' : ''}`}
+                onClick={() => setActiveMenu(activeMenu === 'file' ? null : 'file')}
+                onMouseEnter={() => activeMenu && setActiveMenu('file')}
+              >
+                {t('menu.file')}
+                {activeMenu === 'file' && (
+                  <div className="menu-dropdown">
+                    <div
+                      className="menu-dropdown-item"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openNewFilePalette();
+                        setActiveMenu(null);
+                      }}
+                    >
+                      <span>{t('menu.file.new')}</span>
+                      <span className="menu-dropdown-shortcut">Ctrl+K, N</span>
+                    </div>
+                    <div
+                      className="menu-dropdown-item"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openFileFromDisk();
+                        setActiveMenu(null);
+                      }}
+                    >
+                      <span>{t('menu.file.open')}</span>
+                      <span className="menu-dropdown-shortcut">Ctrl+O</span>
+                    </div>
+                    <div className="menu-dropdown-separator"></div>
+                    <div
+                      className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
+                      onClick={(e) => {
+                        if (!hasActiveFile) return;
+                        e.stopPropagation();
+                        handleSave();
+                      }}
+                    >
+                      <span>{t('menu.file.save')}</span>
+                      <span className="menu-dropdown-shortcut">Ctrl+S</span>
+                    </div>
                   </div>
-                  <div
-                    className="menu-dropdown-item"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openFileFromDisk();
-                      setActiveMenu(null);
-                    }}
-                  >
-                    <span>{t('menu.file.open')}</span>
-                    <span className="menu-dropdown-shortcut">Ctrl+O</span>
-                  </div>
-                  <div className="menu-dropdown-separator"></div>
-                  <div
-                    className="menu-dropdown-item"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleSave();
-                    }}
-                  >
-                    <span>{t('menu.file.save')}</span>
-                    <span className="menu-dropdown-shortcut">Ctrl+S</span>
-                  </div>
-                  <div className="menu-dropdown-separator"></div>
-                  <div
-                    className="menu-dropdown-item"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleExport();
-                      setActiveMenu(null);
-                    }}
-                  >
-                    <span>{t('menu.file.export')}</span>
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            {/* 編集 メニュー */}
-            <div
-              className={`menu-item ${activeMenu === 'edit' ? 'active' : ''}`}
-              onClick={() => setActiveMenu(activeMenu === 'edit' ? null : 'edit')}
-              onMouseEnter={() => activeMenu && setActiveMenu('edit')}
-            >
-              {t('menu.edit')}
-              {activeMenu === 'edit' && (
-                <div className="menu-dropdown">
-                  <div
-                    className="menu-dropdown-item"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      triggerUndo();
-                    }}
-                  >
-                    <span>{t('menu.edit.undo')}</span>
-                    <span className="menu-dropdown-shortcut">Ctrl+Z</span>
+              {/* 編集 メニュー */}
+              <div
+                className={`menu-item ${activeMenu === 'edit' ? 'active' : ''}`}
+                onClick={() => setActiveMenu(activeMenu === 'edit' ? null : 'edit')}
+                onMouseEnter={() => activeMenu && setActiveMenu('edit')}
+              >
+                {t('menu.edit')}
+                {activeMenu === 'edit' && (
+                  <div className="menu-dropdown">
+                    <div
+                      className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
+                      onClick={(e) => {
+                        if (!hasActiveFile) return;
+                        e.stopPropagation();
+                        triggerUndo();
+                      }}
+                    >
+                      <span>{t('menu.edit.undo')}</span>
+                      <span className="menu-dropdown-shortcut">Ctrl+Z</span>
+                    </div>
+                    <div
+                      className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
+                      onClick={(e) => {
+                        if (!hasActiveFile) return;
+                        e.stopPropagation();
+                        triggerRedo();
+                      }}
+                    >
+                      <span>{t('menu.edit.redo')}</span>
+                      <span className="menu-dropdown-shortcut">Ctrl+Y</span>
+                    </div>
                   </div>
-                  <div
-                    className="menu-dropdown-item"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      triggerRedo();
-                    }}
-                  >
-                    <span>{t('menu.edit.redo')}</span>
-                    <span className="menu-dropdown-shortcut">Ctrl+Y</span>
-                  </div>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
 
-            {/* 表示 メニュー */}
-            <div
-              className={`menu-item ${activeMenu === 'view' ? 'active' : ''}`}
-              onClick={() => setActiveMenu(activeMenu === 'view' ? null : 'view')}
-              onMouseEnter={() => activeMenu && setActiveMenu('view')}
-            >
-              {t('menu.view')}
-              {activeMenu === 'view' && (
-                <div className="menu-dropdown">
-                  <div
-                    className="menu-dropdown-item"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      triggerCommandPalette();
-                      setActiveMenu(null);
-                    }}
-                  >
-                    <span>{t('menu.view.commandPalette')}</span>
-                    <span className="menu-dropdown-shortcut">F1</span>
+              {/* 表示 メニュー */}
+              <div
+                className={`menu-item ${activeMenu === 'view' ? 'active' : ''}`}
+                onClick={() => setActiveMenu(activeMenu === 'view' ? null : 'view')}
+                onMouseEnter={() => activeMenu && setActiveMenu('view')}
+              >
+                {t('menu.view')}
+                {activeMenu === 'view' && (
+                  <div className="menu-dropdown">
+                    <div
+                      className="menu-dropdown-item"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        triggerCommandPalette();
+                        setActiveMenu(null);
+                      }}
+                    >
+                      <span>{t('menu.view.commandPalette')}</span>
+                      <span className="menu-dropdown-shortcut">F1</span>
+                    </div>
+                    <div className="menu-dropdown-separator"></div>
+                    <div
+                      className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
+                      onClick={(e) => {
+                        if (!hasActiveFile) return;
+                        e.stopPropagation();
+                        setShowPreview(!showPreview);
+                        setActiveMenu(null);
+                      }}
+                    >
+                      <span>
+                        {showPreview ? t('menu.view.previewClose') : t('menu.view.previewOpen')}
+                      </span>
+                      <span className="menu-dropdown-shortcut">Ctrl+Shift+V</span>
+                    </div>
+                    <div className="menu-dropdown-separator"></div>
+                    <div
+                      className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
+                      onClick={(e) => {
+                        if (!hasActiveFile) return;
+                        e.stopPropagation();
+                        setShowLangSwitchPalette(true);
+                        setActiveMenu(null);
+                      }}
+                    >
+                      <span>{t('menu.view.language')}</span>
+                    </div>
+                    <div className="menu-dropdown-separator"></div>
+                    <div
+                      className="menu-dropdown-item"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIsSettingsOpen(true);
+                        setActiveMenu(null);
+                      }}
+                    >
+                      <span>{t('menu.view.settings')}</span>
+                      <span className="menu-dropdown-shortcut">Ctrl+,</span>
+                    </div>
                   </div>
-                  <div className="menu-dropdown-separator"></div>
-                  <div
-                    className="menu-dropdown-item"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowPreview(!showPreview);
-                      setActiveMenu(null);
-                    }}
-                  >
-                    <span>
-                      {showPreview ? t('menu.view.previewClose') : t('menu.view.previewOpen')}
-                    </span>
-                    <span className="menu-dropdown-shortcut">Ctrl+Shift+V</span>
-                  </div>
-                  <div className="menu-dropdown-separator"></div>
-                  <div
-                    className="menu-dropdown-item"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowLangSwitchPalette(true);
-                      setActiveMenu(null);
-                    }}
-                  >
-                    <span>{t('menu.view.language')}</span>
-                  </div>
-                  <div className="menu-dropdown-separator"></div>
-                  <div
-                    className="menu-dropdown-item"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setIsSettingsOpen(true);
-                      setActiveMenu(null);
-                    }}
-                  >
-                    <span>{t('menu.view.settings')}</span>
-                    <span className="menu-dropdown-shortcut">Ctrl+,</span>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </div>
         <div className="titlebar-section titlebar-center">
-          <button
-            className="command-palette-trigger"
-            onClick={triggerCommandPalette}
-            data-tooltip={t('titlebar.commandPaletteTooltip')}
-          >
-            <Search size={14} />
-            <span>{t('titlebar.searchPlaceholder')}</span>
-          </button>
+          {settings.showCommandBar ? (
+            <button
+              className="command-palette-trigger"
+              onClick={triggerCommandPalette}
+              data-tooltip={t('titlebar.commandPaletteTooltip')}
+            >
+              <Search size={14} />
+              <span>{t('titlebar.searchPlaceholder')}</span>
+            </button>
+          ) : (
+            <div className="titlebar-center-title">{activeFile?.name || 'Markdown Editor'}</div>
+          )}
         </div>
         <div className="titlebar-section titlebar-right">
           <button
@@ -1502,6 +1622,33 @@ function App() {
           </button>
         </div>
       </header>
+
+      {/* タイトルバー右クリックメニュー */}
+      {titleBarContextMenu && (
+        <div
+          className="context-menu"
+          style={{
+            position: 'fixed',
+            top: titleBarContextMenu.y,
+            left: titleBarContextMenu.x,
+            zIndex: 10001,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div
+            className="context-menu-item"
+            onClick={() => {
+              setSettings({ ...settings, showCommandBar: !settings.showCommandBar });
+              setTitleBarContextMenu(null);
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              {settings.showCommandBar ? <Check size={14} /> : <div style={{ width: 14 }} />}
+              <span>{t('settings.showCommandBar')}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* === 言語選択用 QuickPick パレット === */}
       {showLanguagePalette && (
@@ -1678,30 +1825,244 @@ function App() {
         )}
 
         <div className="activity-bar">
+          {/* compact モード時のハンバーガーメニュー */}
+          {effectiveMenuBarMode === 'compact' && (
+            <div style={{ position: 'relative' }}>
+              <div
+                className="activity-icon"
+                data-tooltip-right={t('menu.compact.tooltip')}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (hamburgerMenu) {
+                    setHamburgerMenu(null);
+                    setHamburgerSubMenu(null);
+                  } else {
+                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+                    setHamburgerMenu({ x: rect.right + 2, y: rect.top });
+                  }
+                }}
+              >
+                <Menu size={24} />
+              </div>
+              {hamburgerMenu && (
+                <div
+                  className="context-menu hamburger-context-menu"
+                  style={{ top: 0, left: '100%', marginLeft: '2px' }}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* ファイルカテゴリ */}
+                  <div
+                    className={`context-menu-item has-submenu ${hamburgerSubMenu === 'file' ? 'active' : ''}`}
+                    onMouseEnter={() => setHamburgerSubMenu('file')}
+                    onClick={() => setHamburgerSubMenu(hamburgerSubMenu === 'file' ? null : 'file')}
+                  >
+                    <span>{t('menu.file')}</span>
+                  </div>
+                  {hamburgerSubMenu === 'file' && (
+                    <div className="hamburger-sub-menu" style={{ top: 0 }}>
+                      <div
+                        className="context-menu-item"
+                        onClick={() => {
+                          openNewFilePalette();
+                          setHamburgerMenu(null);
+                        }}
+                      >
+                        <span>{t('menu.file.new')}</span>
+                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
+                          Ctrl+K, N
+                        </span>
+                      </div>
+                      <div
+                        className="context-menu-item"
+                        onClick={() => {
+                          openFileFromDisk();
+                          setHamburgerMenu(null);
+                        }}
+                      >
+                        <span>{t('menu.file.open')}</span>
+                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
+                          Ctrl+O
+                        </span>
+                      </div>
+                      <div className="context-menu-separator" />
+                      <div
+                        className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
+                        onClick={
+                          hasActiveFile
+                            ? () => {
+                                handleSave();
+                                setHamburgerMenu(null);
+                              }
+                            : undefined
+                        }
+                      >
+                        <span>{t('menu.file.save')}</span>
+                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
+                          Ctrl+S
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 編集カテゴリ */}
+                  <div
+                    className={`context-menu-item has-submenu ${hamburgerSubMenu === 'edit' ? 'active' : ''}`}
+                    onMouseEnter={() => setHamburgerSubMenu('edit')}
+                    onClick={() => setHamburgerSubMenu(hamburgerSubMenu === 'edit' ? null : 'edit')}
+                  >
+                    <span>{t('menu.edit')}</span>
+                  </div>
+                  {hamburgerSubMenu === 'edit' && (
+                    <div className="hamburger-sub-menu" style={{ top: '30px' }}>
+                      <div
+                        className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
+                        onClick={
+                          hasActiveFile
+                            ? () => {
+                                triggerUndo();
+                                setHamburgerMenu(null);
+                              }
+                            : undefined
+                        }
+                      >
+                        <span>{t('menu.edit.undo')}</span>
+                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
+                          Ctrl+Z
+                        </span>
+                      </div>
+                      <div
+                        className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
+                        onClick={
+                          hasActiveFile
+                            ? () => {
+                                triggerRedo();
+                                setHamburgerMenu(null);
+                              }
+                            : undefined
+                        }
+                      >
+                        <span>{t('menu.edit.redo')}</span>
+                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
+                          Ctrl+Y
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 表示カテゴリ */}
+                  <div
+                    className={`context-menu-item has-submenu ${hamburgerSubMenu === 'view' ? 'active' : ''}`}
+                    onMouseEnter={() => setHamburgerSubMenu('view')}
+                    onClick={() => setHamburgerSubMenu(hamburgerSubMenu === 'view' ? null : 'view')}
+                  >
+                    <span>{t('menu.view')}</span>
+                  </div>
+                  {hamburgerSubMenu === 'view' && (
+                    <div className="hamburger-sub-menu" style={{ top: '60px' }}>
+                      <div
+                        className="context-menu-item"
+                        onClick={() => {
+                          triggerCommandPalette();
+                          setHamburgerMenu(null);
+                        }}
+                      >
+                        <span>{t('menu.view.commandPalette')}</span>
+                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
+                          F1
+                        </span>
+                      </div>
+                      <div className="context-menu-separator" />
+                      <div
+                        className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
+                        onClick={
+                          hasActiveFile
+                            ? () => {
+                                setShowPreview(!showPreview);
+                                setHamburgerMenu(null);
+                              }
+                            : undefined
+                        }
+                      >
+                        <span>
+                          {showPreview ? t('menu.view.previewClose') : t('menu.view.previewOpen')}
+                        </span>
+                      </div>
+                      <div
+                        className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
+                        onClick={
+                          hasActiveFile
+                            ? () => {
+                                setShowLangSwitchPalette(true);
+                                setHamburgerMenu(null);
+                              }
+                            : undefined
+                        }
+                      >
+                        <span>{t('menu.view.language')}</span>
+                      </div>
+                      <div
+                        className="context-menu-item"
+                        onClick={() => {
+                          setIsSettingsOpen(true);
+                          setShowSettingsTab(true);
+                          setHamburgerMenu(null);
+                        }}
+                      >
+                        <span>{t('menu.view.settings')}</span>
+                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
+                          Ctrl+,
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
           <div
-            className={`activity-icon ${activeSidebarTab === 'explorer' ? 'active' : ''}`}
+            className={`activity-icon ${activeSidebarTab === 'explorer' && isSidebarOpen ? 'active' : ''}`}
             data-tooltip-right={t('activity.explorer')}
-            onClick={() => setActiveSidebarTab('explorer')}
+            onClick={() => {
+              if (activeSidebarTab === 'explorer') setIsSidebarOpen(!isSidebarOpen);
+              else {
+                setActiveSidebarTab('explorer');
+                setIsSidebarOpen(true);
+              }
+            }}
           >
             <Files size={24} />
           </div>
           <div
-            className={`activity-icon ${activeSidebarTab === 'outline' ? 'active' : ''}`}
+            className={`activity-icon ${activeSidebarTab === 'outline' && isSidebarOpen ? 'active' : ''}`}
             data-tooltip-right={t('activity.outline')}
-            onClick={() => setActiveSidebarTab('outline')}
+            onClick={() => {
+              if (activeSidebarTab === 'outline') setIsSidebarOpen(!isSidebarOpen);
+              else {
+                setActiveSidebarTab('outline');
+                setIsSidebarOpen(true);
+              }
+            }}
           >
             <ListIcon size={24} />
           </div>
           <div
-            className={`activity-icon ${activeSidebarTab === 'docs' ? 'active' : ''}`}
+            className={`activity-icon ${activeSidebarTab === 'docs' && isSidebarOpen ? 'active' : ''}`}
             data-tooltip-right={t('activity.docs')}
-            onClick={() => setActiveSidebarTab('docs')}
+            onClick={() => {
+              if (activeSidebarTab === 'docs') setIsSidebarOpen(!isSidebarOpen);
+              else {
+                setActiveSidebarTab('docs');
+                setIsSidebarOpen(true);
+                // Docs表示時は横スクロールなしで読めるよう最低幅を確保
+                setSidebarWidth((prev) => Math.max(prev, 360));
+              }
+            }}
           >
             <BookOpen size={24} />
           </div>
           <div style={{ flex: 1 }}></div>
           <div
-            className={`activity-icon ${isSettingsOpen || showSettingsTab ? 'active' : ''}`}
+            className="activity-icon"
             data-tooltip-right={t('activity.settings')}
             onClick={() => {
               setIsSettingsOpen(true);
@@ -1712,7 +2073,10 @@ function App() {
           </div>
         </div>
 
-        <div className="side-bar" style={{ width: sidebarWidth }}>
+        <div
+          className={`side-bar ${isSidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}
+          style={{ width: isSidebarOpen ? sidebarWidth : 0 }}
+        >
           <div className="side-bar-header">
             {activeSidebarTab === 'explorer' ? (
               <div className="sidebar-header">
@@ -2172,7 +2536,7 @@ function App() {
           {!isSettingsOpen && activeFile && (
             <Toolbar
               onInsertMarkdown={insertMarkdown}
-              onExport={handleExport}
+              onSave={handleSave}
               onTogglePreview={() => setShowPreview(!showPreview)}
               showPreview={showPreview}
               onUndo={handleUndo}
@@ -2187,9 +2551,19 @@ function App() {
             {isSettingsOpen ? (
               /* === 設定画面 (タブ内表示) === */
               <div className="settings-tab-content">
-                <h2 className="settings-tab-title">{t('settings.title')}</h2>
+                <div className="settings-tab-header">
+                  <h2 className="settings-tab-title">{t('settings.title')}</h2>
+                  <button
+                    type="button"
+                    className="settings-reset-btn"
+                    onClick={resetSettingsToDefault}
+                  >
+                    <RotateCcw size={13} />
+                    <span>{t('settings.resetDefaults')}</span>
+                  </button>
+                </div>
                 <div className="settings-content">
-                  <div className="setting-row">
+                  <div className={`setting-row ${isSettingModified('language') ? 'modified' : ''}`}>
                     <span className="setting-label">{t('settings.language')}</span>
                     <select
                       className="setting-input"
@@ -2205,33 +2579,108 @@ function App() {
                       <option value="en">{t('langSwitch.en')}</option>
                     </select>
                   </div>
-                  <div className="setting-row">
+                  <div
+                    className={`setting-row ${isSettingModified('menuBarVisibility') ? 'modified' : ''}`}
+                  >
+                    <span className="setting-label">{t('settings.menuBarVisibility')}</span>
+                    <select
+                      className="setting-input"
+                      style={{ fontFamily: settings.uiFont }}
+                      value={settings.menuBarVisibility}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          menuBarVisibility: e.target.value as
+                            | 'visible'
+                            | 'hidden'
+                            | 'compact'
+                            | 'toggle',
+                        })
+                      }
+                    >
+                      <option value="visible">{t('settings.menuBar.visible')}</option>
+                      <option value="hidden">{t('settings.menuBar.hidden')}</option>
+                      <option value="compact">{t('settings.menuBar.compact')}</option>
+                      <option value="toggle">{t('settings.menuBar.toggle')}</option>
+                    </select>
+                  </div>
+                  <div className={`setting-row ${isSettingModified('fontSize') ? 'modified' : ''}`}>
                     <span className="setting-label">{t('settings.fontSize')}</span>
-                    <input
-                      type="number"
-                      className="setting-input"
-                      value={settings.fontSize}
-                      onChange={(e) =>
-                        setSettings({ ...settings, fontSize: Number(e.target.value) || 14 })
-                      }
-                      min={8}
-                      max={72}
-                    />
+                    <div className="setting-number-control">
+                      <input
+                        type="number"
+                        className="setting-input setting-number-input"
+                        value={settings.fontSize}
+                        onChange={(e) =>
+                          setNumericSetting('fontSize', Number(e.target.value), 14, 8, 72)
+                        }
+                        min={8}
+                        max={72}
+                      />
+                      <div className="setting-number-buttons">
+                        <button
+                          type="button"
+                          className="setting-step-btn"
+                          onClick={() =>
+                            setNumericSetting('fontSize', settings.fontSize + 1, 14, 8, 72)
+                          }
+                          aria-label="Increase font size"
+                        >
+                          <ChevronUp size={11} />
+                        </button>
+                        <button
+                          type="button"
+                          className="setting-step-btn"
+                          onClick={() =>
+                            setNumericSetting('fontSize', settings.fontSize - 1, 14, 8, 72)
+                          }
+                          aria-label="Decrease font size"
+                        >
+                          <ChevronDown size={11} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="setting-row">
+                  <div
+                    className={`setting-row ${isSettingModified('lineHeight') ? 'modified' : ''}`}
+                  >
                     <span className="setting-label">{t('settings.lineHeight')}</span>
-                    <input
-                      type="number"
-                      className="setting-input"
-                      value={settings.lineHeight}
-                      onChange={(e) =>
-                        setSettings({ ...settings, lineHeight: Number(e.target.value) || 24 })
-                      }
-                      min={12}
-                      max={100}
-                    />
+                    <div className="setting-number-control">
+                      <input
+                        type="number"
+                        className="setting-input setting-number-input"
+                        value={settings.lineHeight}
+                        onChange={(e) =>
+                          setNumericSetting('lineHeight', Number(e.target.value), 24, 12, 100)
+                        }
+                        min={12}
+                        max={100}
+                      />
+                      <div className="setting-number-buttons">
+                        <button
+                          type="button"
+                          className="setting-step-btn"
+                          onClick={() =>
+                            setNumericSetting('lineHeight', settings.lineHeight + 1, 24, 12, 100)
+                          }
+                          aria-label="Increase line height"
+                        >
+                          <ChevronUp size={11} />
+                        </button>
+                        <button
+                          type="button"
+                          className="setting-step-btn"
+                          onClick={() =>
+                            setNumericSetting('lineHeight', settings.lineHeight - 1, 24, 12, 100)
+                          }
+                          aria-label="Decrease line height"
+                        >
+                          <ChevronDown size={11} />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                  <div className="setting-row">
+                  <div className={`setting-row ${isSettingModified('minimap') ? 'modified' : ''}`}>
                     <span className="setting-label">{t('settings.minimap')}</span>
                     <div
                       className={`toggle-switch ${settings.minimap ? 'active' : ''}`}
@@ -2246,25 +2695,50 @@ function App() {
                       </span>
                     </div>
                   </div>
-                  <div className="setting-row">
-                    <span className="setting-label">{t('settings.wordWrap')}</span>
-                    <select
-                      className="setting-input"
-                      style={{ fontFamily: settings.uiFont }}
-                      value={settings.wordWrap}
-                      onChange={(e) =>
-                        setSettings({ ...settings, wordWrap: e.target.value as 'on' | 'off' })
+                  <div
+                    className={`setting-row ${isSettingModified('showCommandBar') ? 'modified' : ''}`}
+                  >
+                    <span className="setting-label">{t('settings.showCommandBar')}</span>
+                    <div
+                      className={`toggle-switch ${settings.showCommandBar ? 'active' : ''}`}
+                      onClick={() =>
+                        setSettings({ ...settings, showCommandBar: !settings.showCommandBar })
                       }
                     >
-                      <option value="on">{t('settings.wordWrapOn')}</option>
-                      <option value="off">{t('settings.wordWrapOff')}</option>
-                    </select>
+                      <span className="toggle-icon">
+                        {settings.showCommandBar ? (
+                          <Check size={12} strokeWidth={3} />
+                        ) : (
+                          <X size={12} strokeWidth={3} />
+                        )}
+                      </span>
+                    </div>
                   </div>
-                  <div className="setting-row">
+                  <div className={`setting-row ${isSettingModified('wordWrap') ? 'modified' : ''}`}>
+                    <span className="setting-label">{t('settings.wordWrap')}</span>
+                    <div
+                      className={`toggle-switch ${settings.wordWrap === 'on' ? 'active' : ''}`}
+                      onClick={() =>
+                        setSettings({
+                          ...settings,
+                          wordWrap: settings.wordWrap === 'on' ? 'off' : 'on',
+                        })
+                      }
+                    >
+                      <span className="toggle-icon">
+                        {settings.wordWrap === 'on' ? (
+                          <Check size={12} strokeWidth={3} />
+                        ) : (
+                          <X size={12} strokeWidth={3} />
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                  <div className={`setting-row ${isSettingModified('uiFont') ? 'modified' : ''}`}>
                     <span className="setting-label">{t('settings.uiFont')}</span>
                     <select
                       className="setting-input"
-                      style={{ width: '180px', fontFamily: settings.uiFont }}
+                      style={{ width: '260px', fontFamily: settings.uiFont }}
                       value={settings.uiFont}
                       onChange={(e) => setSettings({ ...settings, uiFont: e.target.value })}
                     >
@@ -2291,11 +2765,13 @@ function App() {
                       )}
                     </select>
                   </div>
-                  <div className="setting-row">
+                  <div
+                    className={`setting-row ${isSettingModified('editorFont') ? 'modified' : ''}`}
+                  >
                     <span className="setting-label">{t('settings.editorFont')}</span>
                     <select
                       className="setting-input"
-                      style={{ width: '180px', fontFamily: settings.uiFont }}
+                      style={{ width: '260px', fontFamily: settings.uiFont }}
                       value={settings.editorFont}
                       onChange={(e) => setSettings({ ...settings, editorFont: e.target.value })}
                     >

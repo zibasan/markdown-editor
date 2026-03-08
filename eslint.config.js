@@ -29,6 +29,7 @@ export default defineConfig([
     },
     rules: {
       ...tseslint.configs.recommended.rules,
+      'react-hooks/static-components': 'off',
       '@typescript-eslint/no-unused-vars': [
         'error',
         {

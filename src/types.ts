@@ -19,14 +19,22 @@ export interface EditorSettings {
   wordWrap: 'on' | 'off';
   uiFont: string;
   editorFont: string;
+  // メニューバーの表示モード
+  // visible: 常に表示, hidden: 完全非表示,
+  // compact: ハンバーガーメニュー化, toggle: Altキーで表示切替
+  menuBarVisibility: 'visible' | 'hidden' | 'compact' | 'toggle';
+  // コマンドバーの表示状態
+  showCommandBar: boolean;
 }
 
 export const DEFAULT_SETTINGS: EditorSettings = {
   language: 'ja',
   fontSize: 14,
   lineHeight: 24,
-  minimap: false,
+  minimap: true,
   wordWrap: 'on',
-  uiFont: 'consolas, "Courier New", monospace',
-  editorFont: 'consolas, "Courier New", monospace',
+  uiFont: "consolas, 'Courier New', monospace",
+  editorFont: "consolas, 'Courier New', monospace",
+  menuBarVisibility: 'visible',
+  showCommandBar: true,
 };
