@@ -43,10 +43,12 @@ function configureMonacoLocale(lang: 'ja' | 'en') {
 (() => {
   try {
     const saved = localStorage.getItem('editor_settings');
-    const lang = saved ? JSON.parse(saved).language || 'ja' : 'ja';
+    const lang = saved
+      ? JSON.parse(saved).language || DEFAULT_SETTINGS.language
+      : DEFAULT_SETTINGS.language;
     configureMonacoLocale(lang);
   } catch {
-    configureMonacoLocale('ja');
+    configureMonacoLocale(DEFAULT_SETTINGS.language);
   }
 })();
 

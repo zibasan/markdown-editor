@@ -18,10 +18,19 @@ export interface OutlineItem {
   line: number;
 }
 
+const getDefaultUiLanguage = (): 'ja' | 'en' => {
+  if (typeof navigator === 'undefined') {
+    return 'ja';
+  }
+
+  return navigator.language.toLowerCase().startsWith('ja') ? 'ja' : 'en';
+};
+
 // エディターの設定の型定義
 export interface EditorSettings {
   language: 'ja' | 'en';
   showTabFileName: boolean;
+  enableDiscordMarkdown: boolean;
   fontSize: number;
   lineHeight: number;
   minimap: boolean;
@@ -37,8 +46,9 @@ export interface EditorSettings {
 }
 
 export const DEFAULT_SETTINGS: EditorSettings = {
-  language: 'ja',
+  language: getDefaultUiLanguage(),
   showTabFileName: true,
+  enableDiscordMarkdown: false,
   fontSize: 14,
   lineHeight: 24,
   minimap: true,

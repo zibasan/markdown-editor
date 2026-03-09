@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import type { Monaco } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
@@ -7,11 +8,81 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import remarkGfm from 'remark-gfm';
 import { remarkAlert } from 'remark-github-blockquote-alert';
+import rehypeRaw from 'rehype-raw';
 
 import { Toolbar } from '../Toolbar';
 import type { EditorFile, EditorSettings } from '../../types';
 
 type ActiveTheme = 'light' | 'dark';
+
+interface DiscordSpoilerProps {
+  children: React.ReactNode;
+}
+
+function DiscordSpoiler({ children }: DiscordSpoilerProps) {
+  const [revealed, setRevealed] = useState(false);
+
+  return (
+    <span
+      className={`discord-spoiler ${revealed ? 'revealed' : ''}`}
+      onClick={() => setRevealed((prev) => !prev)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          setRevealed((prev) => !prev);
+        }
+      }}
+    >
+      {children}
+    </span>
+  );
+}
+
+function protectCodeSegments(input: string): {
+  text: string;
+  restore: (value: string) => string;
+} {
+  const placeholders: string[] = [];
+  const text = input.replace(/```[\s\S]*?```|`[^`\n]*`/g, (match) => {
+    const token = `@@CODESEGMENT${placeholders.length}@@`;
+    placeholders.push(match);
+
+    return token;
+  });
+
+  return {
+    text,
+    restore: (value: string) =>
+      value.replace(/@@CODESEGMENT(\d+)@@/g, (_full, index) => placeholders[Number(index)] ?? ''),
+  };
+}
+
+function buildPreviewMarkdown(content: string, enableDiscordMarkdown: boolean): string {
+  if (!enableDiscordMarkdown) {
+    return content;
+  }
+
+  const { text: protectedText, restore } = protectCodeSegments(content);
+
+  let transformed = protectedText.replace(
+    /^([ \t]*)-#\s+(.+)$/gm,
+    "$1<span class='discord-subtext'>$2</span>"
+  );
+  transformed = transformed.replace(
+    /(?<!\\)__([^\n_](?:[\s\S]*?[^\n_])?)__(?!_)/g,
+    "<span class='discord-underline'>$1</span>"
+  );
+  transformed = transformed.replace(
+    /\|\|([^\n|](?:[\s\S]*?[^\n|])?)\|\|/g,
+    "<span class='discord-spoiler'>$1</span>"
+  );
+
+  transformed = transformed.replace(/_/g, '\\_');
+
+  return restore(transformed);
+}
 
 interface EditorPaneProps {
   t: (key: string) => string;
@@ -96,6 +167,12 @@ export function EditorPane({
   previewWidth,
   logoImage,
 }: EditorPaneProps) {
+  const previewContent = useMemo(() => {
+    if (!activeFile) return '';
+
+    return buildPreviewMarkdown(activeFile.content, settings.enableDiscordMarkdown);
+  }, [activeFile, settings.enableDiscordMarkdown]);
+
   return (
     <div className="editor-container">
       <div className="tabs-container">
@@ -142,7 +219,7 @@ export function EditorPane({
             onClick={() => setIsSettingsOpen(true)}
           >
             <Settings size={14} />
-            <span className="tab-title">設定</span>
+            <span className="tab-title">{t('settings.title')}</span>
             <button
               className="tab-close-btn"
               onClick={(e) => {
@@ -160,6 +237,7 @@ export function EditorPane({
 
       {!isSettingsOpen && activeFile && (
         <Toolbar
+          t={t}
           onInsertMarkdown={insertMarkdown}
           onSave={handleSave}
           onTogglePreview={() => setShowPreview(!showPreview)}
@@ -169,6 +247,7 @@ export function EditorPane({
           canUndo={canUndo}
           canRedo={canRedo}
           isMarkdownMode={activeFile.language !== 'plaintext'}
+          enableDiscordMarkdown={settings.enableDiscordMarkdown}
         />
       )}
 
@@ -395,6 +474,33 @@ export function EditorPane({
                 </div>
               </div>
 
+              <div
+                className={`setting-row ${isSettingModified('enableDiscordMarkdown') ? 'modified' : ''}`}
+              >
+                <span className="setting-label">
+                  <span className="setting-material-icon" aria-hidden="true">
+                    chat
+                  </span>
+                  {t('settings.enableDiscordMarkdown')}
+                </span>
+                <div
+                  className={`toggle-switch ${settings.enableDiscordMarkdown ? 'active' : ''}`}
+                  onClick={() =>
+                    setSettings({
+                      ...settings,
+                      enableDiscordMarkdown: !settings.enableDiscordMarkdown,
+                    })
+                  }
+                >
+                  <span className="toggle-icon">
+                    {settings.enableDiscordMarkdown ? (
+                      <Check size={12} strokeWidth={3} />
+                    ) : (
+                      <X size={12} strokeWidth={3} />
+                    )}
+                  </span>
+                </div>
+              </div>
               <div className={`setting-row ${isSettingModified('wordWrap') ? 'modified' : ''}`}>
                 <span className="setting-label">
                   <span className="setting-material-icon" aria-hidden="true">
@@ -577,6 +683,7 @@ export function EditorPane({
                 <div className="preview-pane" style={{ width: previewWidth, flex: 'none' }}>
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkAlert]}
+                    rehypePlugins={[rehypeRaw]}
                     components={{
                       code({ className, children, ...props }) {
                         const match = /language-(\w+)/.exec(className || '');
@@ -595,9 +702,20 @@ export function EditorPane({
                           </code>
                         );
                       },
+                      span({ className, children, ...props }) {
+                        if (className?.includes('discord-spoiler')) {
+                          return <DiscordSpoiler>{children}</DiscordSpoiler>;
+                        }
+
+                        return (
+                          <span className={className} {...props}>
+                            {children}
+                          </span>
+                        );
+                      },
                     }}
                   >
-                    {activeFile.content}
+                    {previewContent}
                   </ReactMarkdown>
                 </div>
               </>

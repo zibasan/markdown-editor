@@ -1680,3 +1680,53 @@ select,
   opacity: 0.35;
   cursor: not-allowed;
 }
+
+.toolbar-inner-discord {
+  border-top: 1px solid var(--toolbar-border);
+  padding-top: 4px;
+  padding-bottom: 6px;
+}
+
+.toolbar-discord-label {
+  font-size: 12px;
+  color: var(--text-color);
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.toolbar-btn-text {
+  font-size: 12px;
+  font-family: var(--editor-font);
+  line-height: 1;
+}
+
+.preview-pane .discord-subtext {
+  display: inline;
+  font-size: 0.82em;
+  color: #8b949e;
+}
+
+.preview-pane .discord-underline {
+  text-decoration: underline;
+}
+
+.preview-pane .discord-spoiler {
+  display: inline;
+  border-radius: 3px;
+  background-color: #4f545c;
+  color: transparent;
+  cursor: pointer;
+  padding: 0 3px;
+  transition: color 0.2s ease;
+  user-select: none;
+}
+
+.preview-pane .discord-spoiler.revealed {
+  color: inherit;
+  user-select: text;
+}
+
+.toolbar-material-icon {
+  font-size: 18px;
+  line-height: 1;
+}
