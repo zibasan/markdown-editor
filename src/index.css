@@ -1,5 +1,6 @@
 @import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&family=Roboto:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=M+PLUS+1p:wght@400;500;700&family=Roboto+Mono:wght@400;500&family=Source+Code+Pro:wght@400;500&family=BIZ+UDGothic:wght@400;700&display=swap');
 @import url('https://fonts.googleapis.com/css2?family=LINE+Seed+JP&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL@0');
 
 .line-seed-jp-regular {
   font-family: 'LINE Seed JP', sans-serif;
@@ -92,6 +93,20 @@ body {
   background-color: var(--bg-color);
   color: var(--text-color);
   overflow: hidden;
+}
+
+.app-container,
+.app-container * {
+  user-select: none;
+}
+
+/* 編集/入力に必要な領域は選択可能のまま維持 */
+input,
+textarea,
+select,
+.monaco-editor,
+.monaco-editor * {
+  user-select: text;
 }
 
 /* === カスタムスクロールバー === */
@@ -345,6 +360,38 @@ body {
   border-left-color: var(--activity-icon-active);
 }
 
+.activity-material-icon {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  direction: ltr;
+}
+
+.setting-material-icon {
+  font-family: 'Material Symbols Outlined';
+  font-style: normal;
+  font-weight: normal;
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  direction: ltr;
+}
+
+.file-codicon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  color: #8cb4ff;
+}
+
 /* サイドバー (ファイルツリーなど、今回はタイトルのみ) */
 .side-bar {
   width: 250px;
@@ -355,13 +402,14 @@ body {
   transition:
     width 0.2s ease,
     opacity 0.2s ease;
-  overflow: hidden;
+  overflow: visible;
   white-space: nowrap;
 }
 .side-bar.sidebar-closed {
   width: 0 !important; /* JSによるstyle={{width: ...}}を上書き */
   opacity: 0;
   border-right: none;
+  overflow: hidden;
 }
 
 .side-bar-header {
@@ -488,6 +536,13 @@ body {
   user-select: none;
   opacity: 0.7;
   position: relative;
+}
+
+.editor-tab.tab-name-icon-only {
+  min-width: 54px;
+  max-width: 54px;
+  padding: 0 8px 0 10px;
+  gap: 4px;
 }
 
 .editor-tab.active {
@@ -723,6 +778,9 @@ body {
 }
 
 .setting-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   color: var(--text-color);
   font-size: 14px;
 }

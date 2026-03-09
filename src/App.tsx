@@ -10,17 +10,12 @@ import {
   Sun,
   Moon,
   Monitor,
-  Files,
-  List as ListIcon,
   Settings,
   Plus,
   X,
   Check,
-  FileText,
   FolderOpen,
-  BookOpen,
   Languages,
-  Menu,
   ChevronUp,
   ChevronDown,
   RotateCcw,
@@ -71,6 +66,64 @@ function configureMonacoLocale(lang: 'ja' | 'en') {
   }
 })();
 
+const renderFileTypeIcon = (filename: string, size = 14) => {
+  const ext = filename.split('.').pop()?.toLowerCase();
+  const iconClass =
+    ext === 'md' || ext === 'markdown'
+      ? 'codicon codicon-markdown'
+      : ext === 'txt'
+        ? 'codicon codicon-file-text'
+        : 'codicon codicon-file';
+
+  return (
+    <span
+      className={`file-codicon ${iconClass}`}
+      style={{ fontSize: `${size}px` }}
+      aria-hidden="true"
+    />
+  );
+};
+
+const FILE_SESSION_STORAGE_KEY = 'editor_files_state';
+
+interface PersistedEditorFile {
+  id: string;
+  name: string;
+  content: string;
+  savedContent?: string;
+  language?: string;
+  sourceSignature?: string;
+  needsSaveAs?: boolean;
+}
+
+interface PersistedEditorState {
+  files: PersistedEditorFile[];
+  activeFileId: string;
+}
+
+const readPersistedEditorState = (): PersistedEditorState => {
+  try {
+    const raw = localStorage.getItem(FILE_SESSION_STORAGE_KEY);
+    if (!raw) {
+      return { files: [], activeFileId: '' };
+    }
+    const parsed = JSON.parse(raw) as Partial<PersistedEditorState>;
+    const files = Array.isArray(parsed.files)
+      ? parsed.files.filter(
+          (file): file is PersistedEditorFile =>
+            typeof file?.id === 'string' &&
+            typeof file?.name === 'string' &&
+            typeof file?.content === 'string'
+        )
+      : [];
+    const activeFileId = typeof parsed.activeFileId === 'string' ? parsed.activeFileId : '';
+
+    return { files, activeFileId };
+  } catch {
+    return { files: [], activeFileId: '' };
+  }
+};
+
 function App() {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
@@ -78,8 +131,11 @@ function App() {
   const dragCounter = useRef(0);
   const handleSaveRef = useRef<() => void>(() => {});
 
-  const [files, setFiles] = useState<EditorFile[]>([]);
-  const [activeFileId, setActiveFileId] = useState<string>('');
+  const [files, setFiles] = useState<EditorFile[]>(() => readPersistedEditorState().files);
+  const filesRef = useRef<EditorFile[]>([]);
+  const [activeFileId, setActiveFileId] = useState<string>(
+    () => readPersistedEditorState().activeFileId
+  );
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('explorer');
   // サイドバーの開閉状態 (画面が狭い場合は初期で閉じておく)
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth > 768);
@@ -202,13 +258,27 @@ function App() {
     localStorage.setItem('editor_theme', theme);
   }, [theme]);
 
+  useEffect(() => {
+    const persistedFiles: PersistedEditorFile[] = files.map((file) => ({
+      id: file.id,
+      name: file.name,
+      content: file.content,
+      savedContent: file.savedContent,
+      language: file.language,
+      sourceSignature: file.sourceSignature,
+      needsSaveAs: file.needsSaveAs,
+    }));
+    const state: PersistedEditorState = {
+      files: persistedFiles,
+      activeFileId,
+    };
+    localStorage.setItem(FILE_SESSION_STORAGE_KEY, JSON.stringify(state));
+  }, [activeFileId, files]);
+
   // コンテキストメニュー用のState (fileIdがない場合は余白右クリック)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; fileId?: string } | null>(
     null
   );
-  // リネーム(名前の変更)用のState
-  const [renamingFileId, setRenamingFileId] = useState<string | null>(null);
-  const [renameValue, setRenameValue] = useState('');
 
   // メニューバー用のState
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -249,6 +319,21 @@ function App() {
 
   const activeFile = files.find((f) => f.id === activeFileId);
   const hasActiveFile = Boolean(activeFile);
+  useEffect(() => {
+    filesRef.current = files;
+  }, [files]);
+
+  useEffect(() => {
+    if (files.length === 0) {
+      if (activeFileId !== '') setActiveFileId('');
+
+      return;
+    }
+    if (!files.some((f) => f.id === activeFileId)) {
+      setActiveFileId(files[0].id);
+    }
+  }, [activeFileId, files]);
+
   const isSettingModified = <K extends keyof EditorSettings>(key: K) => {
     return settings[key] !== DEFAULT_SETTINGS[key];
   };
@@ -260,14 +345,19 @@ function App() {
 
   // === 主要な操作関数 (ホイスティング対策で上部に配置) ===
 
-  const showToast = (msg: string) => {
+  const showToast = React.useCallback((msg: string) => {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 4000);
-  };
+  }, []);
 
   const clamp = (value: number, min: number, max: number) => {
     return Math.min(max, Math.max(min, value));
   };
+
+  const activateFile = React.useCallback((fileId: string) => {
+    setActiveFileId(fileId);
+    setIsSettingsOpen(false);
+  }, []);
 
   const setNumericSetting = (
     key: 'fontSize' | 'lineHeight',
@@ -287,6 +377,43 @@ function App() {
 
     return ext === 'md' || ext === 'txt';
   };
+
+  const getFileSourceSignature = (file: Pick<File, 'name' | 'size' | 'lastModified'>) => {
+    return `${file.name}::${file.size}::${file.lastModified}`;
+  };
+
+  const findOpenFileBySignature = React.useCallback((sourceSignature: string) => {
+    return (
+      filesRef.current.find((openFile) => openFile.sourceSignature === sourceSignature) || null
+    );
+  }, []);
+
+  const findOpenFileByHandle = React.useCallback(async (targetHandle: any) => {
+    for (const openFile of filesRef.current) {
+      if (!openFile.handle?.isSameEntry) continue;
+      try {
+        if (await openFile.handle.isSameEntry(targetHandle)) {
+          return openFile;
+        }
+      } catch {
+        // 権限状態により isSameEntry が失敗する場合は同一でないものとして扱う
+      }
+    }
+
+    return null;
+  }, []);
+
+  const findOpenFileByLegacyContent = React.useCallback((name: string, content: string) => {
+    return (
+      filesRef.current.find(
+        (openFile) =>
+          openFile.name === name &&
+          openFile.savedContent === content &&
+          !openFile.handle &&
+          !openFile.sourceSignature
+      ) || null
+    );
+  }, []);
 
   const getLanguageFromFilename = (filename: string): string => {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
@@ -340,7 +467,30 @@ function App() {
       });
 
       const file = await handle.getFile();
+      const sourceSignature = getFileSourceSignature(file);
+      const sameHandleFile = await findOpenFileByHandle(handle);
+      if (sameHandleFile) {
+        activateFile(sameHandleFile.id);
+        setActiveMenu(null);
+
+        return;
+      }
+      const sameSignatureFile = findOpenFileBySignature(sourceSignature);
+      if (sameSignatureFile) {
+        activateFile(sameSignatureFile.id);
+        setActiveMenu(null);
+
+        return;
+      }
+
       const content = await file.text();
+      const legacyMatchedFile = findOpenFileByLegacyContent(file.name, content);
+      if (legacyMatchedFile) {
+        activateFile(legacyMatchedFile.id);
+        setActiveMenu(null);
+
+        return;
+      }
       const newFileId = Date.now().toString();
 
       const newFile: EditorFile = {
@@ -348,12 +498,13 @@ function App() {
         name: file.name,
         content: content,
         savedContent: content,
+        sourceSignature: sourceSignature,
         language: getLanguageFromFilename(file.name),
         handle: handle,
       };
 
       setFiles((prev) => [...prev, newFile]);
-      setActiveFileId(newFileId);
+      activateFile(newFileId);
       setActiveMenu(null);
     } catch (err: any) {
       if (err.name !== 'AbortError') {
@@ -361,7 +512,14 @@ function App() {
         showToast(t('status.errorOpenFile') || 'ファイルの読み込みに失敗しました。');
       }
     }
-  }, [t]);
+  }, [
+    activateFile,
+    findOpenFileByHandle,
+    findOpenFileByLegacyContent,
+    findOpenFileBySignature,
+    showToast,
+    t,
+  ]);
 
   const openNewFilePalette = () => {
     setNewFileNameInput('');
@@ -370,6 +528,8 @@ function App() {
   };
 
   const getIsDirty = (file: EditorFile) => {
+    if (file.needsSaveAs) return true;
+
     return file.content !== (file.savedContent ?? file.content) && file.content !== '';
   };
 
@@ -413,11 +573,26 @@ function App() {
       await writable.write(activeFile.content);
       await writable.close();
 
+      let savedSourceSignature = activeFile.sourceSignature;
+      try {
+        const savedFile = await handle.getFile();
+        savedSourceSignature = getFileSourceSignature(savedFile);
+      } catch {
+        // 署名取得に失敗した場合は既存の値を維持
+      }
+
       // 状態を更新（ハンドルを保持し、savedContentを更新）
       setFiles((prev) =>
         prev.map((f) =>
           f.id === activeFile.id
-            ? { ...f, savedContent: f.content, name: handle.name, handle: handle }
+            ? {
+                ...f,
+                savedContent: f.content,
+                name: handle.name,
+                handle: handle,
+                sourceSignature: savedSourceSignature,
+                needsSaveAs: false,
+              }
             : f
         )
       );
@@ -432,7 +607,7 @@ function App() {
       console.error(err);
       showToast(t('status.errorSaveFile') || '保存に失敗しました。');
     }
-  }, [activeFile, t]);
+  }, [activeFile, showToast, t]);
 
   // handleSaveRef を更新（Monaco Editor の addAction が常に最新の handleSave を参照するため）
   useEffect(() => {
@@ -488,10 +663,9 @@ function App() {
         ],
       });
 
-      const initialText = `# ようこそ！\n\n上のツールバーから、**太字**や*斜体*などを追加できます。`;
       // 空の内容でローカルファイルを作成
       const writable = await handle.createWritable();
-      await writable.write(initialText);
+      await writable.write('');
       await writable.close();
 
       const newFileId = Date.now().toString();
@@ -504,7 +678,7 @@ function App() {
         handle: handle,
       };
       setFiles((prev) => [...prev, newFile]);
-      setActiveFileId(newFileId);
+      activateFile(newFileId);
       showToast(`${handle.name} ${t('status.created') || 'を作成しました。'}`);
       if (editorRef.current) {
         editorRef.current.focus();
@@ -531,6 +705,14 @@ function App() {
     }
   };
 
+  const triggerCommandPalette = React.useCallback(() => {
+    const editor = editorRef.current;
+    if (editor) {
+      editor.focus();
+      editor.trigger('App', 'editor.action.quickCommand', null);
+    }
+  }, []);
+
   // メニューを外側クリックで閉じる
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -546,6 +728,14 @@ function App() {
   // ショートカット (リーダーキー対応 v17)
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // F1: コマンドパレットを開く（初期画面などEditor未フォーカス時にも有効）
+      if (e.key === 'F1') {
+        e.preventDefault();
+        triggerCommandPalette();
+
+        return;
+      }
+
       // 1. リーダーキー (Ctrl+K) の処理
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
@@ -594,7 +784,7 @@ function App() {
     window.addEventListener('keydown', handleGlobalKeyDown);
 
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isChordWaiting, handleSave, openFileFromDisk]); // isChordWaiting や handleSave, openFileFromDisk の変化を検知する必要がある
+  }, [isChordWaiting, handleSave, openFileFromDisk, triggerCommandPalette]); // isChordWaiting や handleSave, openFileFromDisk の変化を検知する必要がある
 
   // === ペインリサイズ用のイベントハンドラ定義 ===
   // サイドバーの幅変更
@@ -879,7 +1069,7 @@ function App() {
     // コマンドパレットにアクションを追加 (言語モードの変更)
     editorInstance.addAction({
       id: 'change-language-mode-action',
-      label: 'Change Language Mode',
+      label: t('cmdPalette.customOpt.changeLangMode'),
       keybindings: [],
       run: function () {
         setShowLanguagePalette(true);
@@ -889,7 +1079,7 @@ function App() {
     // コマンドパレットにアクションを追加 (テーマ切り替え)
     editorInstance.addAction({
       id: 'toggle-theme-action',
-      label: 'Preferences: Color Theme',
+      label: t('cmdPalette.customOpt.changeTheme'),
       keybindings: [],
       contextMenuGroupId: 'navigation',
       contextMenuOrder: 1.5,
@@ -935,7 +1125,7 @@ function App() {
     // コマンドパレットにアクションを追加 (プレビュー切り替え)
     editorInstance.addAction({
       id: 'toggle-preview-action',
-      label: 'Markdown: Toggle Preview',
+      label: t('cmdPalette.customOpt.toggleMarkdownPreview'),
       keybindings: [
         monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyMod.Shift | monacoInstance.KeyCode.KeyV,
       ],
@@ -947,7 +1137,7 @@ function App() {
     // コマンドパレットにアクションを追加 (新規ファイル作成 Ctrl+N)
     editorInstance.addAction({
       id: 'new-file-palette-action',
-      label: 'File: New File...',
+      label: t('cmdPalette.customOpt.createNewFile'),
       keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyN],
       run: function () {
         openNewFilePalette();
@@ -957,7 +1147,7 @@ function App() {
     // コマンドパレットにアクションを追加 (ファイル保存 Ctrl+S)
     editorInstance.addAction({
       id: 'save-file-action',
-      label: 'File: Save',
+      label: t('cmdPalette.customOpt.saveFile'),
       keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyS],
       run: function () {
         handleSaveRef.current();
@@ -967,7 +1157,7 @@ function App() {
     // カスタムコマンド: 設定を開く
     editorInstance.addAction({
       id: 'open-settings-action',
-      label: 'Preferences: Open Settings',
+      label: t('cmdPalette.customOpt.openSettings'),
       keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.US_COMMA],
       run: function () {
         setIsSettingsOpen(true);
@@ -978,7 +1168,7 @@ function App() {
     // カスタムコマンド: ファイルを開く
     editorInstance.addAction({
       id: 'open-file-action',
-      label: 'File: Open File...',
+      label: t('cmdPalette.customOpt.openFile'),
       keybindings: [monacoInstance.KeyMod.CtrlCmd | monacoInstance.KeyCode.KeyO],
       run: function () {
         openFileFromDisk();
@@ -988,7 +1178,7 @@ function App() {
     // カスタムコマンド: すべてのファイルを閉じる (初期画面に戻る)
     editorInstance.addAction({
       id: 'close-all-files-action',
-      label: 'View: Close All Editor Tabs',
+      label: t('cmdPalette.customOpt.closeAllFiles'),
       run: function () {
         // 未保存の確認はひとまずすべて破棄するシンプルな強制クローズとして実装
         setFiles([]);
@@ -1018,19 +1208,35 @@ function App() {
 
       return;
     }
+    const sourceSignature = getFileSourceSignature(file);
+    const existingFile = findOpenFileBySignature(sourceSignature);
+    if (existingFile) {
+      activateFile(existingFile.id);
+      e.target.value = ''; // Reset
+      setActiveMenu(null);
+
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
+      const legacyMatchedFile = findOpenFileByLegacyContent(file.name, content);
+      if (legacyMatchedFile) {
+        activateFile(legacyMatchedFile.id);
+
+        return;
+      }
       const newFileId = Date.now().toString();
       const newFile: EditorFile = {
         id: newFileId,
         name: file.name,
         content: content,
         savedContent: content,
+        sourceSignature: sourceSignature,
         language: getLanguageFromFilename(file.name),
       };
       setFiles((prev) => [...prev, newFile]);
-      setActiveFileId(newFileId);
+      activateFile(newFileId);
     };
     reader.readAsText(file);
     e.target.value = ''; // Reset
@@ -1068,18 +1274,39 @@ function App() {
         return;
       }
 
+      const sourceSignature = getFileSourceSignature(file);
+      const sameHandleFile = await findOpenFileByHandle(handle);
+      if (sameHandleFile) {
+        activateFile(sameHandleFile.id);
+
+        return;
+      }
+      const sameSignatureFile = findOpenFileBySignature(sourceSignature);
+      if (sameSignatureFile) {
+        activateFile(sameSignatureFile.id);
+
+        return;
+      }
+
       const content = await file.text();
+      const legacyMatchedFile = findOpenFileByLegacyContent(file.name, content);
+      if (legacyMatchedFile) {
+        activateFile(legacyMatchedFile.id);
+
+        return;
+      }
       const newFileId = Date.now().toString();
       const newFile: EditorFile = {
         id: newFileId,
         name: file.name,
         content: content,
         savedContent: content,
+        sourceSignature: sourceSignature,
         language: getLanguageFromFilename(file.name),
         handle: handle,
       };
       setFiles((prev) => [...prev, newFile]);
-      setActiveFileId(newFileId);
+      activateFile(newFileId);
     } catch (err: any) {
       console.error(err);
       // フォールバック
@@ -1091,19 +1318,33 @@ function App() {
   };
 
   const readDroppedFile = (file: File) => {
+    const sourceSignature = getFileSourceSignature(file);
+    const existingFile = findOpenFileBySignature(sourceSignature);
+    if (existingFile) {
+      activateFile(existingFile.id);
+
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
+      const legacyMatchedFile = findOpenFileByLegacyContent(file.name, content);
+      if (legacyMatchedFile) {
+        activateFile(legacyMatchedFile.id);
+
+        return;
+      }
       const newFileId = Date.now().toString();
       const newFile: EditorFile = {
         id: newFileId,
         name: file.name,
         content: content,
         savedContent: content,
+        sourceSignature: sourceSignature,
         language: getLanguageFromFilename(file.name),
       };
       setFiles((prev) => [...prev, newFile]);
-      setActiveFileId(newFileId);
+      activateFile(newFileId);
     };
     reader.readAsText(file);
   };
@@ -1213,32 +1454,9 @@ function App() {
   // メニューの「開く」
   const handleContextOpen = () => {
     if (contextMenu && contextMenu.fileId) {
-      setActiveFileId(contextMenu.fileId);
+      activateFile(contextMenu.fileId);
     }
     setContextMenu(null);
-  };
-
-  // メニューの「名前の変更」
-  const handleContextRename = () => {
-    if (contextMenu && contextMenu.fileId) {
-      const file = files.find((f) => f.id === contextMenu.fileId);
-      if (file) {
-        setRenamingFileId(contextMenu.fileId);
-        setRenameValue(file.name);
-      }
-    }
-    setContextMenu(null);
-  };
-
-  // リネーム確定処理
-  const commitRename = () => {
-    if (renamingFileId && renameValue.trim()) {
-      setFiles((prevFiles) =>
-        prevFiles.map((f) => (f.id === renamingFileId ? { ...f, name: renameValue.trim() } : f))
-      );
-    }
-    setRenamingFileId(null);
-    setRenameValue('');
   };
 
   // メニューの「削除」
@@ -1321,14 +1539,6 @@ function App() {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  };
-
-  const triggerCommandPalette = () => {
-    const editor = editorRef.current;
-    if (editor) {
-      editor.focus();
-      editor.trigger('App', 'editor.action.quickCommand', null);
-    }
   };
 
   const filteredLanguages = useMemo(() => {
@@ -1842,7 +2052,9 @@ function App() {
                   }
                 }}
               >
-                <Menu size={24} />
+                <span className="activity-material-icon" aria-hidden="true">
+                  menu
+                </span>
               </div>
               {hamburgerMenu && (
                 <div
@@ -2030,7 +2242,9 @@ function App() {
               }
             }}
           >
-            <Files size={24} />
+            <span className="activity-material-icon" aria-hidden="true">
+              folder
+            </span>
           </div>
           <div
             className={`activity-icon ${activeSidebarTab === 'outline' && isSidebarOpen ? 'active' : ''}`}
@@ -2043,7 +2257,9 @@ function App() {
               }
             }}
           >
-            <ListIcon size={24} />
+            <span className="activity-material-icon" aria-hidden="true">
+              format_list_bulleted
+            </span>
           </div>
           <div
             className={`activity-icon ${activeSidebarTab === 'docs' && isSidebarOpen ? 'active' : ''}`}
@@ -2058,7 +2274,9 @@ function App() {
               }
             }}
           >
-            <BookOpen size={24} />
+            <span className="activity-material-icon" aria-hidden="true">
+              menu_book
+            </span>
           </div>
           <div style={{ flex: 1 }}></div>
           <div
@@ -2069,7 +2287,9 @@ function App() {
               setShowSettingsTab(true);
             }}
           >
-            <Settings size={24} />
+            <span className="activity-material-icon" aria-hidden="true">
+              settings
+            </span>
           </div>
         </div>
 
@@ -2145,50 +2365,32 @@ function App() {
                   <li
                     key={file.id}
                     className={`explorer-item ${activeFileId === file.id ? 'active' : ''}`}
-                    onClick={() => setActiveFileId(file.id)}
+                    onClick={() => activateFile(file.id)}
                     onContextMenu={(e) => handleContextMenu(e, file.id)}
                   >
-                    <FileText size={14} />
-                    {renamingFileId === file.id ? (
-                      <input
-                        className="rename-input"
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.target.value)}
-                        onBlur={commitRename}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') commitRename();
-                          if (e.key === 'Escape') {
-                            setRenamingFileId(null);
-                            setRenameValue('');
-                          }
-                        }}
-                        autoFocus
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    ) : (
-                      <div
+                    {renderFileTypeIcon(file.name)}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        flex: 1,
+                        minWidth: 0,
+                      }}
+                    >
+                      <span
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '6px',
+                          fontSize: '13px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
                           flex: 1,
-                          minWidth: 0,
                         }}
                       >
-                        <span
-                          style={{
-                            fontSize: '13px',
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            flex: 1,
-                          }}
-                        >
-                          {file.name}
-                        </span>
-                        {getIsDirty(file) && <span className="dirty-marker">*</span>}
-                      </div>
-                    )}
+                        {file.name}
+                      </span>
+                      {getIsDirty(file) && <span className="dirty-marker">*</span>}
+                    </div>
                     <button
                       className="explorer-close-btn"
                       onClick={(e) => {
@@ -2487,14 +2689,16 @@ function App() {
               return (
                 <div
                   key={file.id}
-                  className={`editor-tab ${!isSettingsOpen && file.id === activeFileId ? 'active' : ''}`}
+                  className={`editor-tab ${!isSettingsOpen && file.id === activeFileId ? 'active' : ''} ${
+                    !settings.showTabFileName ? 'tab-name-icon-only' : ''
+                  }`}
                   onClick={() => {
                     setActiveFileId(file.id);
                     setIsSettingsOpen(false);
                   }}
                 >
-                  <FileText size={14} />
-                  <span className="tab-title">{file.name}</span>
+                  {renderFileTypeIcon(file.name)}
+                  {settings.showTabFileName && <span className="tab-title">{file.name}</span>}
                   {getIsDirty(file) && <span className="dirty-marker">*</span>}
                   <button
                     className="tab-close-btn"
@@ -2564,7 +2768,12 @@ function App() {
                 </div>
                 <div className="settings-content">
                   <div className={`setting-row ${isSettingModified('language') ? 'modified' : ''}`}>
-                    <span className="setting-label">{t('settings.language')}</span>
+                    <span className="setting-label">
+                      <span className="setting-material-icon" aria-hidden="true">
+                        language
+                      </span>
+                      {t('settings.language')}
+                    </span>
                     <select
                       className="setting-input"
                       style={{ fontFamily: settings.uiFont }}
@@ -2582,7 +2791,12 @@ function App() {
                   <div
                     className={`setting-row ${isSettingModified('menuBarVisibility') ? 'modified' : ''}`}
                   >
-                    <span className="setting-label">{t('settings.menuBarVisibility')}</span>
+                    <span className="setting-label">
+                      <span className="setting-material-icon" aria-hidden="true">
+                        menu_open
+                      </span>
+                      {t('settings.menuBarVisibility')}
+                    </span>
                     <select
                       className="setting-input"
                       style={{ fontFamily: settings.uiFont }}
@@ -2604,8 +2818,37 @@ function App() {
                       <option value="toggle">{t('settings.menuBar.toggle')}</option>
                     </select>
                   </div>
+                  <div
+                    className={`setting-row ${isSettingModified('showTabFileName') ? 'modified' : ''}`}
+                  >
+                    <span className="setting-label">
+                      <span className="setting-material-icon" aria-hidden="true">
+                        tab
+                      </span>
+                      {t('settings.showTabFileName')}
+                    </span>
+                    <div
+                      className={`toggle-switch ${settings.showTabFileName ? 'active' : ''}`}
+                      onClick={() =>
+                        setSettings({ ...settings, showTabFileName: !settings.showTabFileName })
+                      }
+                    >
+                      <span className="toggle-icon">
+                        {settings.showTabFileName ? (
+                          <Check size={12} strokeWidth={3} />
+                        ) : (
+                          <X size={12} strokeWidth={3} />
+                        )}
+                      </span>
+                    </div>
+                  </div>
                   <div className={`setting-row ${isSettingModified('fontSize') ? 'modified' : ''}`}>
-                    <span className="setting-label">{t('settings.fontSize')}</span>
+                    <span className="setting-label">
+                      <span className="setting-material-icon" aria-hidden="true">
+                        format_size
+                      </span>
+                      {t('settings.fontSize')}
+                    </span>
                     <div className="setting-number-control">
                       <input
                         type="number"
@@ -2644,7 +2887,12 @@ function App() {
                   <div
                     className={`setting-row ${isSettingModified('lineHeight') ? 'modified' : ''}`}
                   >
-                    <span className="setting-label">{t('settings.lineHeight')}</span>
+                    <span className="setting-label">
+                      <span className="setting-material-icon" aria-hidden="true">
+                        format_line_spacing
+                      </span>
+                      {t('settings.lineHeight')}
+                    </span>
                     <div className="setting-number-control">
                       <input
                         type="number"
@@ -2681,7 +2929,12 @@ function App() {
                     </div>
                   </div>
                   <div className={`setting-row ${isSettingModified('minimap') ? 'modified' : ''}`}>
-                    <span className="setting-label">{t('settings.minimap')}</span>
+                    <span className="setting-label">
+                      <span className="setting-material-icon" aria-hidden="true">
+                        picture_in_picture_alt
+                      </span>
+                      {t('settings.minimap')}
+                    </span>
                     <div
                       className={`toggle-switch ${settings.minimap ? 'active' : ''}`}
                       onClick={() => setSettings({ ...settings, minimap: !settings.minimap })}
@@ -2698,7 +2951,12 @@ function App() {
                   <div
                     className={`setting-row ${isSettingModified('showCommandBar') ? 'modified' : ''}`}
                   >
-                    <span className="setting-label">{t('settings.showCommandBar')}</span>
+                    <span className="setting-label">
+                      <span className="setting-material-icon" aria-hidden="true">
+                        search
+                      </span>
+                      {t('settings.showCommandBar')}
+                    </span>
                     <div
                       className={`toggle-switch ${settings.showCommandBar ? 'active' : ''}`}
                       onClick={() =>
@@ -2715,7 +2973,12 @@ function App() {
                     </div>
                   </div>
                   <div className={`setting-row ${isSettingModified('wordWrap') ? 'modified' : ''}`}>
-                    <span className="setting-label">{t('settings.wordWrap')}</span>
+                    <span className="setting-label">
+                      <span className="setting-material-icon" aria-hidden="true">
+                        wrap_text
+                      </span>
+                      {t('settings.wordWrap')}
+                    </span>
                     <div
                       className={`toggle-switch ${settings.wordWrap === 'on' ? 'active' : ''}`}
                       onClick={() =>
@@ -2735,7 +2998,12 @@ function App() {
                     </div>
                   </div>
                   <div className={`setting-row ${isSettingModified('uiFont') ? 'modified' : ''}`}>
-                    <span className="setting-label">{t('settings.uiFont')}</span>
+                    <span className="setting-label">
+                      <span className="setting-material-icon" aria-hidden="true">
+                        text_fields
+                      </span>
+                      {t('settings.uiFont')}
+                    </span>
                     <select
                       className="setting-input"
                       style={{ width: '260px', fontFamily: settings.uiFont }}
@@ -2768,7 +3036,12 @@ function App() {
                   <div
                     className={`setting-row ${isSettingModified('editorFont') ? 'modified' : ''}`}
                   >
-                    <span className="setting-label">{t('settings.editorFont')}</span>
+                    <span className="setting-label">
+                      <span className="setting-material-icon" aria-hidden="true">
+                        code
+                      </span>
+                      {t('settings.editorFont')}
+                    </span>
                     <select
                       className="setting-input"
                       style={{ width: '260px', fontFamily: settings.uiFont }}
@@ -2984,10 +3257,6 @@ function App() {
               <>
                 <div className="context-menu-item" onClick={handleContextOpen}>
                   {t('context.open')}
-                </div>
-                <div className="context-menu-separator" />
-                <div className="context-menu-item" onClick={handleContextRename}>
-                  {t('context.rename')}
                 </div>
                 <div className="context-menu-separator" />
                 <div

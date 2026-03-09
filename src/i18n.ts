@@ -37,7 +37,7 @@ const ja: TranslationDict = {
   'activity.explorer': 'エクスプローラー',
   'activity.outline': 'アウトライン (目次)',
   'activity.docs': 'Markdown Docs',
-  'activity.settings': '管理 (設定)',
+  'activity.settings': '設定',
 
   // === サイドバー ===
   'sidebar.explorer': 'エクスプローラー',
@@ -69,6 +69,7 @@ const ja: TranslationDict = {
   'settings.uiFont': 'アプリのフォント (UI)',
   'settings.editorFont': 'エディターのフォント',
   'settings.language': 'アプリの言語 (Language)',
+  'settings.showTabFileName': 'タブにファイル名を表示',
   'settings.menuBarVisibility': 'メニューバーの表示',
   'settings.menuBar.visible': '常に表示',
   'settings.menuBar.hidden': '完全に非表示',
@@ -94,7 +95,6 @@ const ja: TranslationDict = {
 
   // === コンテキストメニュー ===
   'context.open': '開く',
-  'context.rename': '名前の変更',
   'context.delete': '削除',
   'context.newFile': '新しいファイル',
   'context.openFile': 'ファイルを開く',
@@ -138,6 +138,16 @@ const ja: TranslationDict = {
 
   // === ツールバー ===
   'toolbar.save': '保存',
+
+  // === コマンドパレットのカスタムオプションのラベル ===
+  'cmdPalette.customOpt.changeLangMode': '言語モードの変更',
+  'cmdPalette.customOpt.changeTheme': '基本設定: ライトテーマとダークテーマの切り替え',
+  'cmdPalette.customOpt.toggleMarkdownPreview': 'Markdown: プレビューの切り替え',
+  'cmdPalette.customOpt.createNewFile': 'ファイル: 新規ファイルを作成...',
+  'cmdPalette.customOpt.saveFile': 'ファイル: 現在のファイルを保存...',
+  'cmdPalette.customOpt.openSettings': '基本設定: 設定を開く...',
+  'cmdPalette.customOpt.openFile': 'ファイル: ファイルを開く...',
+  'cmdPalette.customOpt.closeAllFiles': 'ファイル: 全てのタブを強制的に閉じる',
 };
 
 // 英語の翻訳辞書
@@ -201,6 +211,7 @@ const en: TranslationDict = {
   'settings.uiFont': 'UI Font',
   'settings.editorFont': 'Editor Font',
   'settings.language': 'Language',
+  'settings.showTabFileName': 'Show File Name in Tabs',
   'settings.menuBarVisibility': 'Menu Bar Visibility',
   'settings.menuBar.visible': 'Always Visible',
   'settings.menuBar.hidden': 'Hidden',
@@ -225,7 +236,6 @@ const en: TranslationDict = {
 
   // === Context menu ===
   'context.open': 'Open',
-  'context.rename': 'Rename',
   'context.delete': 'Delete',
   'context.newFile': 'New File',
   'context.openFile': 'Open File',
@@ -269,6 +279,16 @@ const en: TranslationDict = {
 
   // === Toolbar ===
   'toolbar.save': 'Save',
+
+  // === コマンドパレットのカスタムオプションのラベル ===
+  'cmdPalette.customOpt.changeLangMode': 'Change Language Mode',
+  'cmdPalette.customOpt.changeTheme': 'Preferences: Toggle Color Theme(Light/Dark)',
+  'cmdPalette.customOpt.toggleMarkdownPreview': 'Markdown: Toggle Preview',
+  'cmdPalette.customOpt.createNewFile': 'File: New File...',
+  'cmdPalette.customOpt.saveFile': 'File: Save Current File...',
+  'cmdPalette.customOpt.openSettings': 'Preferences: Open Settings',
+  'cmdPalette.customOpt.openFile': 'File: Open File...',
+  'cmdPalette.customOpt.closeAllFiles': 'File: Force Close All Editor Tabs',
 };
 
 // 翻訳辞書のマップ

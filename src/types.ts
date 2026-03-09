@@ -4,6 +4,8 @@ export interface EditorFile {
   name: string;
   content: string;
   savedContent?: string;
+  needsSaveAs?: boolean;
+  sourceSignature?: string;
   language?: string; // 動的言語用のプロパティ
   isSettings?: boolean;
   handle?: any; // eslint-disable-line
@@ -13,6 +15,7 @@ export interface EditorFile {
 // エディターの設定の型定義
 export interface EditorSettings {
   language: 'ja' | 'en';
+  showTabFileName: boolean;
   fontSize: number;
   lineHeight: number;
   minimap: boolean;
@@ -29,6 +32,7 @@ export interface EditorSettings {
 
 export const DEFAULT_SETTINGS: EditorSettings = {
   language: 'ja',
+  showTabFileName: true,
   fontSize: 14,
   lineHeight: 24,
   minimap: true,
