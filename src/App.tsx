@@ -1,46 +1,30 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import Editor from '@monaco-editor/react';
 import loader from '@monaco-editor/loader';
 import type { Monaco } from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
-import { Toolbar } from './components/Toolbar';
-import {
-  Search,
-  Sun,
-  Moon,
-  Monitor,
-  Settings,
-  Plus,
-  X,
-  Check,
-  FolderOpen,
-  Languages,
-  ChevronUp,
-  ChevronDown,
-  RotateCcw,
-} from 'lucide-react';
-import type { EditorFile, EditorSettings } from './types';
-import { DEFAULT_SETTINGS } from './types';
-import { createT } from './i18n';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
-import { remarkAlert } from 'remark-github-blockquote-alert';
 import 'remark-github-blockquote-alert/alert.css';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import './index.css';
 import logoImage from './assets/logo.svg';
+import { EditorPane } from './components/app/EditorPane';
+import { OverlayLayer } from './components/app/OverlayLayer';
+import { QuickPickLayer } from './components/app/QuickPickLayer';
+import { SidebarPanel } from './components/app/SidebarPanel';
+import { StatusBar } from './components/app/StatusBar';
+import { TitleBar } from './components/app/TitleBar';
+import type { EditorFile, EditorSettings, OutlineItem } from './types';
+import { DEFAULT_SETTINGS } from './types';
+import { createT } from './i18n';
+import {
+  getFileSourceSignature,
+  getLanguageFromFilename,
+  isSupportedFile,
+} from './utils/editor/fileUtils';
+import { clamp } from './utils/editor/number';
+import { FILE_SESSION_STORAGE_KEY, readPersistedEditorState } from './utils/editor/persistence';
 
 type Theme = 'system' | 'light' | 'dark';
 type SidebarTab = 'explorer' | 'outline' | 'docs';
-
-// 見出し(Outline)の型定義
-interface OutlineItem {
-  level: number;
-  text: string;
-  line: number;
-}
 
 // Monaco Editor の言語パック初期設定（動的に変更するには再読み込みが必要）
 function configureMonacoLocale(lang: 'ja' | 'en') {
@@ -66,70 +50,17 @@ function configureMonacoLocale(lang: 'ja' | 'en') {
   }
 })();
 
-const renderFileTypeIcon = (filename: string, size = 14) => {
-  const ext = filename.split('.').pop()?.toLowerCase();
-  const iconClass =
-    ext === 'md' || ext === 'markdown'
-      ? 'codicon codicon-markdown'
-      : ext === 'txt'
-        ? 'codicon codicon-file-text'
-        : 'codicon codicon-file';
-
-  return (
-    <span
-      className={`file-codicon ${iconClass}`}
-      style={{ fontSize: `${size}px` }}
-      aria-hidden="true"
-    />
-  );
-};
-
-const FILE_SESSION_STORAGE_KEY = 'editor_files_state';
-
-interface PersistedEditorFile {
-  id: string;
-  name: string;
-  content: string;
-  savedContent?: string;
-  language?: string;
-  sourceSignature?: string;
-  needsSaveAs?: boolean;
-}
-
-interface PersistedEditorState {
-  files: PersistedEditorFile[];
-  activeFileId: string;
-}
-
-const readPersistedEditorState = (): PersistedEditorState => {
-  try {
-    const raw = localStorage.getItem(FILE_SESSION_STORAGE_KEY);
-    if (!raw) {
-      return { files: [], activeFileId: '' };
-    }
-    const parsed = JSON.parse(raw) as Partial<PersistedEditorState>;
-    const files = Array.isArray(parsed.files)
-      ? parsed.files.filter(
-          (file): file is PersistedEditorFile =>
-            typeof file?.id === 'string' &&
-            typeof file?.name === 'string' &&
-            typeof file?.content === 'string'
-        )
-      : [];
-    const activeFileId = typeof parsed.activeFileId === 'string' ? parsed.activeFileId : '';
-
-    return { files, activeFileId };
-  } catch {
-    return { files: [], activeFileId: '' };
-  }
-};
-
 function App() {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Monaco | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
   const handleSaveRef = useRef<() => void>(() => {});
+  const activeFileIdRef = useRef('');
+  const knownFileHandlesRef = useRef<Record<string, any>>({});
+  const [historyStateByFile, setHistoryStateByFile] = useState<
+    Record<string, { canUndo: boolean; canRedo: boolean }>
+  >({});
 
   const [files, setFiles] = useState<EditorFile[]>(() => readPersistedEditorState().files);
   const filesRef = useRef<EditorFile[]>([]);
@@ -259,7 +190,7 @@ function App() {
   }, [theme]);
 
   useEffect(() => {
-    const persistedFiles: PersistedEditorFile[] = files.map((file) => ({
+    const persistedFiles = files.map((file) => ({
       id: file.id,
       name: file.name,
       content: file.content,
@@ -268,7 +199,7 @@ function App() {
       sourceSignature: file.sourceSignature,
       needsSaveAs: file.needsSaveAs,
     }));
-    const state: PersistedEditorState = {
+    const state = {
       files: persistedFiles,
       activeFileId,
     };
@@ -319,10 +250,14 @@ function App() {
 
   const activeFile = files.find((f) => f.id === activeFileId);
   const hasActiveFile = Boolean(activeFile);
+  const canUndo = Boolean(activeFileId && historyStateByFile[activeFileId]?.canUndo);
+  const canRedo = Boolean(activeFileId && historyStateByFile[activeFileId]?.canRedo);
   useEffect(() => {
     filesRef.current = files;
   }, [files]);
-
+  useEffect(() => {
+    activeFileIdRef.current = activeFileId;
+  }, [activeFileId]);
   useEffect(() => {
     if (files.length === 0) {
       if (activeFileId !== '') setActiveFileId('');
@@ -349,11 +284,39 @@ function App() {
     setToastMsg(msg);
     setTimeout(() => setToastMsg(null), 4000);
   }, []);
+  const rememberFileHandle = React.useCallback((handle: any) => {
+    if (handle?.name) {
+      knownFileHandlesRef.current[handle.name] = handle;
+    }
+  }, []);
 
-  const clamp = (value: number, min: number, max: number) => {
-    return Math.min(max, Math.max(min, value));
+  const updateHistoryAvailability = React.useCallback((fileId: string) => {
+    const model = editorRef.current?.getModel() as any;
+    const nextCanUndo = Boolean(model?.canUndo?.());
+    const nextCanRedo = Boolean(model?.canRedo?.());
+
+    setHistoryStateByFile((prev) => ({
+      ...prev,
+      [fileId]: {
+        canUndo: nextCanUndo,
+        canRedo: nextCanRedo,
+      },
+    }));
+  }, []);
+
+  const clearFileHistory = (fileId: string) => {
+    setHistoryStateByFile((prev) => {
+      const next = { ...prev };
+      delete next[fileId];
+
+      return next;
+    });
   };
 
+  useEffect(() => {
+    if (!activeFileId) return;
+    requestAnimationFrame(() => updateHistoryAvailability(activeFileId));
+  }, [activeFileId, updateHistoryAvailability]);
   const activateFile = React.useCallback((fileId: string) => {
     setActiveFileId(fileId);
     setIsSettingsOpen(false);
@@ -371,17 +334,6 @@ function App() {
       key === 'fontSize' ? { ...prev, fontSize: nextValue } : { ...prev, lineHeight: nextValue }
     );
   };
-
-  const isSupportedFile = (file: File): boolean => {
-    const ext = file.name.split('.').pop()?.toLowerCase();
-
-    return ext === 'md' || ext === 'txt';
-  };
-
-  const getFileSourceSignature = (file: Pick<File, 'name' | 'size' | 'lastModified'>) => {
-    return `${file.name}::${file.size}::${file.lastModified}`;
-  };
-
   const findOpenFileBySignature = React.useCallback((sourceSignature: string) => {
     return (
       filesRef.current.find((openFile) => openFile.sourceSignature === sourceSignature) || null
@@ -415,41 +367,6 @@ function App() {
     );
   }, []);
 
-  const getLanguageFromFilename = (filename: string): string => {
-    const ext = filename.split('.').pop()?.toLowerCase() || '';
-    const map: Record<string, string> = {
-      md: 'markdown',
-      markdown: 'markdown',
-      ts: 'typescript',
-      tsx: 'typescript',
-      js: 'javascript',
-      jsx: 'javascript',
-      json: 'json',
-      html: 'html',
-      htm: 'html',
-      css: 'css',
-      py: 'python',
-      java: 'java',
-      c: 'cpp',
-      cpp: 'cpp',
-      h: 'cpp',
-      hpp: 'cpp',
-      cs: 'csharp',
-      go: 'go',
-      rs: 'rust',
-      php: 'php',
-      rb: 'ruby',
-      xml: 'xml',
-      yaml: 'yaml',
-      yml: 'yaml',
-      sh: 'shell',
-      bash: 'shell',
-      sql: 'sql',
-    };
-
-    return map[ext] || 'plaintext';
-  };
-
   const openFileFromDisk = React.useCallback(async () => {
     try {
       // @ts-expect-error: File System Access API
@@ -467,6 +384,7 @@ function App() {
       });
 
       const file = await handle.getFile();
+      rememberFileHandle(handle);
       const sourceSignature = getFileSourceSignature(file);
       const sameHandleFile = await findOpenFileByHandle(handle);
       if (sameHandleFile) {
@@ -518,6 +436,7 @@ function App() {
     findOpenFileByLegacyContent,
     findOpenFileBySignature,
     showToast,
+    rememberFileHandle,
     t,
   ]);
 
@@ -538,6 +457,12 @@ function App() {
 
     try {
       let handle = activeFile.handle;
+      if (!handle) {
+        const knownHandle = knownFileHandlesRef.current[activeFile.name];
+        if (knownHandle) {
+          handle = knownHandle;
+        }
+      }
 
       // ハンドルがない（新規ファイルなど）場合は保存ダイアログを表示
       if (!handle) {
@@ -602,12 +527,13 @@ function App() {
       } else {
         showToast(`${t('status.fileNotFound')} ${handle.name}`);
       }
+      rememberFileHandle(handle);
       setActiveMenu(null);
     } catch (err: any) {
       console.error(err);
       showToast(t('status.errorSaveFile') || '保存に失敗しました。');
     }
-  }, [activeFile, showToast, t]);
+  }, [activeFile, rememberFileHandle, showToast, t]);
 
   // handleSaveRef を更新（Monaco Editor の addAction が常に最新の handleSave を参照するため）
   useEffect(() => {
@@ -667,6 +593,7 @@ function App() {
       const writable = await handle.createWritable();
       await writable.write('');
       await writable.close();
+      rememberFileHandle(handle);
 
       const newFileId = Date.now().toString();
       const newFile: EditorFile = {
@@ -692,17 +619,29 @@ function App() {
   };
 
   const handleUndo = () => {
-    if (editorRef.current) {
-      editorRef.current.trigger('source', 'editor.action.coreUndo', null);
-      editorRef.current.focus();
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    const undoAction = editor.getAction('undo');
+    if (undoAction) {
+      void undoAction.run();
+
+      return;
     }
+    editor.trigger('App', 'undo', null);
   };
 
   const handleRedo = () => {
-    if (editorRef.current) {
-      editorRef.current.trigger('source', 'editor.action.coreRedo', null);
-      editorRef.current.focus();
+    const editor = editorRef.current;
+    if (!editor) return;
+    editor.focus();
+    const redoAction = editor.getAction('redo');
+    if (redoAction) {
+      void redoAction.run();
+
+      return;
     }
+    editor.trigger('App', 'redo', null);
   };
 
   const triggerCommandPalette = React.useCallback(() => {
@@ -1116,6 +1055,18 @@ function App() {
       }
     });
 
+    editorInstance.onDidChangeModelContent(() => {
+      const fileId = activeFileIdRef.current;
+      if (!fileId) return;
+      updateHistoryAvailability(fileId);
+    });
+
+    editorInstance.onDidChangeModel(() => {
+      const fileId = activeFileIdRef.current;
+      if (!fileId) return;
+      updateHistoryAvailability(fileId);
+    });
+
     // 改行コードの初期取得・設定 (LF固定)
     if (model) {
       model.setEOL(monacoInstance.editor.EndOfLineSequence.LF);
@@ -1183,6 +1134,7 @@ function App() {
         // 未保存の確認はひとまずすべて破棄するシンプルな強制クローズとして実装
         setFiles([]);
         setActiveFileId('');
+        setHistoryStateByFile({});
         setIsSettingsOpen(false);
       },
     });
@@ -1268,6 +1220,7 @@ function App() {
       }
 
       const file = await handle.getFile();
+      rememberFileHandle(handle);
       if (!isSupportedFile(file)) {
         showToast('エラー: Markdown(.md)またはテキスト(.txt)ファイルのみサポートされています。');
 
@@ -1427,6 +1380,7 @@ function App() {
   };
 
   const executeClose = (id: string) => {
+    clearFileHistory(id);
     setFiles((prev) => {
       const newFiles = prev.filter((f) => f.id !== id);
 
@@ -1462,6 +1416,9 @@ function App() {
   // メニューの「削除」
   const handleContextDelete = () => {
     if (contextMenu && files.length > 1) {
+      if (contextMenu.fileId) {
+        clearFileHistory(contextMenu.fileId);
+      }
       const newFiles = files.filter((f) => f.id !== contextMenu.fileId);
       setFiles(newFiles);
       if (activeFileId === contextMenu.fileId) {
@@ -1554,7 +1511,36 @@ function App() {
 
   const selectLanguage = (langId: string) => {
     if (activeFileId) {
-      setFiles((prev) => prev.map((f) => (f.id === activeFileId ? { ...f, language: langId } : f)));
+      setFiles((prev) =>
+        prev.map((f) => {
+          if (f.id !== activeFileId) return f;
+
+          const targetExt = langId === 'plaintext' ? 'txt' : langId === 'markdown' ? 'md' : null;
+          if (!targetExt) {
+            return { ...f, language: langId };
+          }
+
+          const baseName = f.name.replace(/\.[^.]+$/, '');
+          const currentExt = f.name.split('.').pop()?.toLowerCase();
+          const shouldRename = currentExt !== targetExt;
+          const nextName = `${baseName}.${targetExt}`;
+
+          if (!shouldRename) {
+            return { ...f, language: langId };
+          }
+
+          const matchedHandle = knownFileHandlesRef.current[nextName];
+
+          return {
+            ...f,
+            language: langId,
+            name: nextName,
+            needsSaveAs: !matchedHandle,
+            handle: matchedHandle,
+            sourceSignature: undefined,
+          };
+        })
+      );
     }
     setShowLanguagePalette(false);
     setLanguageSearch('');
@@ -1599,21 +1585,13 @@ function App() {
   };
 
   const triggerUndo = () => {
-    const editor = editorRef.current;
-    if (editor) {
-      editor.focus();
-      editor.trigger('App', 'undo', null);
-      setActiveMenu(null);
-    }
+    handleUndo();
+    setActiveMenu(null);
   };
 
   const triggerRedo = () => {
-    const editor = editorRef.current;
-    if (editor) {
-      editor.focus();
-      editor.trigger('App', 'redo', null);
-      setActiveMenu(null);
-    }
+    handleRedo();
+    setActiveMenu(null);
   };
 
   // 見出しをクリックしたときに、エディターの該当行へジャンプスクロールする処理
@@ -1626,395 +1604,80 @@ function App() {
     }
   };
 
+  const applySettings = (nextSettings: EditorSettings) => {
+    setSettings(nextSettings);
+  };
+
+  const setSettingsLanguage = (lang: 'ja' | 'en') => {
+    setSettings({ ...settings, language: lang });
+    configureMonacoLocale(lang);
+  };
+
   return (
     <div
       className="app-container"
       style={{
         transform: `scale(${appScale})`,
         transformOrigin: 'top left',
-        // スケールさせた分だけ、親の幅と高さを拡張して、内側の要素が100%になるようにする
         width: appScale < 1 ? `calc(100vw / ${appScale})` : '100vw',
         height: appScale < 1 ? `calc(100vh / ${appScale})` : '100vh',
         overflow: 'hidden',
       }}
     >
-      <header
-        className="app-titlebar"
-        onContextMenu={(e) => {
+      <TitleBar
+        t={t}
+        effectiveMenuBarMode={effectiveMenuBarMode}
+        isMenuBarVisibleByAlt={isMenuBarVisibleByAlt}
+        activeMenu={activeMenu}
+        setActiveMenu={setActiveMenu}
+        openNewFilePalette={openNewFilePalette}
+        openFileFromDisk={openFileFromDisk}
+        hasActiveFile={hasActiveFile}
+        handleSave={handleSave}
+        triggerUndo={triggerUndo}
+        triggerRedo={triggerRedo}
+        triggerCommandPalette={triggerCommandPalette}
+        showPreview={showPreview}
+        setShowPreview={setShowPreview}
+        setShowLangSwitchPalette={setShowLangSwitchPalette}
+        setIsSettingsOpen={setIsSettingsOpen}
+        settings={settings}
+        setSettings={applySettings}
+        theme={theme}
+        toggleTheme={toggleTheme}
+        activeFileName={activeFile?.name || 'Markdown Editor'}
+        titleBarContextMenu={titleBarContextMenu}
+        setTitleBarContextMenu={setTitleBarContextMenu}
+        onTitleBarContextMenu={(e) => {
           e.preventDefault();
           setTitleBarContextMenu({ x: e.clientX, y: e.clientY });
         }}
-      >
-        <div className="titlebar-section">
-          {/* vscode風アプリアイコンの代用 */}
-          <div style={{ padding: '0 8px', display: 'flex' }}>
-            <img src={logoImage} alt="App Icon" style={{ width: 16, height: 16 }} />
-          </div>
+        logoImage={logoImage}
+      />
 
-          {/* メニューバー (effectiveMenuBarMode に応じて表示/非表示) */}
-          {(effectiveMenuBarMode === 'visible' ||
-            (effectiveMenuBarMode === 'toggle' && isMenuBarVisibleByAlt)) && (
-            <div className="menu-bar">
-              {/* ファイル メニュー */}
-              <div
-                className={`menu-item ${activeMenu === 'file' ? 'active' : ''}`}
-                onClick={() => setActiveMenu(activeMenu === 'file' ? null : 'file')}
-                onMouseEnter={() => activeMenu && setActiveMenu('file')}
-              >
-                {t('menu.file')}
-                {activeMenu === 'file' && (
-                  <div className="menu-dropdown">
-                    <div
-                      className="menu-dropdown-item"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openNewFilePalette();
-                        setActiveMenu(null);
-                      }}
-                    >
-                      <span>{t('menu.file.new')}</span>
-                      <span className="menu-dropdown-shortcut">Ctrl+K, N</span>
-                    </div>
-                    <div
-                      className="menu-dropdown-item"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openFileFromDisk();
-                        setActiveMenu(null);
-                      }}
-                    >
-                      <span>{t('menu.file.open')}</span>
-                      <span className="menu-dropdown-shortcut">Ctrl+O</span>
-                    </div>
-                    <div className="menu-dropdown-separator"></div>
-                    <div
-                      className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
-                      onClick={(e) => {
-                        if (!hasActiveFile) return;
-                        e.stopPropagation();
-                        handleSave();
-                      }}
-                    >
-                      <span>{t('menu.file.save')}</span>
-                      <span className="menu-dropdown-shortcut">Ctrl+S</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 編集 メニュー */}
-              <div
-                className={`menu-item ${activeMenu === 'edit' ? 'active' : ''}`}
-                onClick={() => setActiveMenu(activeMenu === 'edit' ? null : 'edit')}
-                onMouseEnter={() => activeMenu && setActiveMenu('edit')}
-              >
-                {t('menu.edit')}
-                {activeMenu === 'edit' && (
-                  <div className="menu-dropdown">
-                    <div
-                      className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
-                      onClick={(e) => {
-                        if (!hasActiveFile) return;
-                        e.stopPropagation();
-                        triggerUndo();
-                      }}
-                    >
-                      <span>{t('menu.edit.undo')}</span>
-                      <span className="menu-dropdown-shortcut">Ctrl+Z</span>
-                    </div>
-                    <div
-                      className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
-                      onClick={(e) => {
-                        if (!hasActiveFile) return;
-                        e.stopPropagation();
-                        triggerRedo();
-                      }}
-                    >
-                      <span>{t('menu.edit.redo')}</span>
-                      <span className="menu-dropdown-shortcut">Ctrl+Y</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* 表示 メニュー */}
-              <div
-                className={`menu-item ${activeMenu === 'view' ? 'active' : ''}`}
-                onClick={() => setActiveMenu(activeMenu === 'view' ? null : 'view')}
-                onMouseEnter={() => activeMenu && setActiveMenu('view')}
-              >
-                {t('menu.view')}
-                {activeMenu === 'view' && (
-                  <div className="menu-dropdown">
-                    <div
-                      className="menu-dropdown-item"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        triggerCommandPalette();
-                        setActiveMenu(null);
-                      }}
-                    >
-                      <span>{t('menu.view.commandPalette')}</span>
-                      <span className="menu-dropdown-shortcut">F1</span>
-                    </div>
-                    <div className="menu-dropdown-separator"></div>
-                    <div
-                      className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
-                      onClick={(e) => {
-                        if (!hasActiveFile) return;
-                        e.stopPropagation();
-                        setShowPreview(!showPreview);
-                        setActiveMenu(null);
-                      }}
-                    >
-                      <span>
-                        {showPreview ? t('menu.view.previewClose') : t('menu.view.previewOpen')}
-                      </span>
-                      <span className="menu-dropdown-shortcut">Ctrl+Shift+V</span>
-                    </div>
-                    <div className="menu-dropdown-separator"></div>
-                    <div
-                      className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
-                      onClick={(e) => {
-                        if (!hasActiveFile) return;
-                        e.stopPropagation();
-                        setShowLangSwitchPalette(true);
-                        setActiveMenu(null);
-                      }}
-                    >
-                      <span>{t('menu.view.language')}</span>
-                    </div>
-                    <div className="menu-dropdown-separator"></div>
-                    <div
-                      className="menu-dropdown-item"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setIsSettingsOpen(true);
-                        setActiveMenu(null);
-                      }}
-                    >
-                      <span>{t('menu.view.settings')}</span>
-                      <span className="menu-dropdown-shortcut">Ctrl+,</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-        <div className="titlebar-section titlebar-center">
-          {settings.showCommandBar ? (
-            <button
-              className="command-palette-trigger"
-              onClick={triggerCommandPalette}
-              data-tooltip={t('titlebar.commandPaletteTooltip')}
-            >
-              <Search size={14} />
-              <span>{t('titlebar.searchPlaceholder')}</span>
-            </button>
-          ) : (
-            <div className="titlebar-center-title">{activeFile?.name || 'Markdown Editor'}</div>
-          )}
-        </div>
-        <div className="titlebar-section titlebar-right">
-          <button
-            className="theme-toggle-btn"
-            onClick={toggleTheme}
-            data-tooltip-left={`${t('titlebar.themeToggle')} (${theme})`}
-          >
-            {theme === 'system' ? (
-              <Monitor size={16} />
-            ) : theme === 'light' ? (
-              <Sun size={16} />
-            ) : (
-              <Moon size={16} />
-            )}
-          </button>
-        </div>
-      </header>
-
-      {/* タイトルバー右クリックメニュー */}
-      {titleBarContextMenu && (
-        <div
-          className="context-menu"
-          style={{
-            position: 'fixed',
-            top: titleBarContextMenu.y,
-            left: titleBarContextMenu.x,
-            zIndex: 10001,
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div
-            className="context-menu-item"
-            onClick={() => {
-              setSettings({ ...settings, showCommandBar: !settings.showCommandBar });
-              setTitleBarContextMenu(null);
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              {settings.showCommandBar ? <Check size={14} /> : <div style={{ width: 14 }} />}
-              <span>{t('settings.showCommandBar')}</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* === 言語選択用 QuickPick パレット === */}
-      {showLanguagePalette && (
-        <div
-          className="quickpick-overlay"
-          onClick={() => {
-            setShowLanguagePalette(false);
-            setLanguageSearch('');
-          }}
-        >
-          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
-            <div className="quickpick-input-wrapper">
-              <div className="quickpick-title">{t('langPalette.title')}</div>
-              <input
-                ref={languageInputRef}
-                className="quickpick-input"
-                type="text"
-                placeholder={t('langPalette.placeholder')}
-                value={languageSearch}
-                onChange={(e) => setLanguageSearch(e.target.value)}
-                onKeyDown={handleLanguagePaletteKeyDown}
-              />
-            </div>
-            <div className="quickpick-list">
-              {filteredLanguages.map((lang) => (
-                <div
-                  key={lang.id}
-                  className={`quickpick-item ${activeFile?.language === lang.id ? 'active' : ''}`}
-                  onClick={() => selectLanguage(lang.id)}
-                >
-                  <span className="quickpick-item-label">
-                    {lang.aliases && lang.aliases.length > 0 ? lang.aliases[0] : lang.id}
-                  </span>
-                  <span className="quickpick-item-sub">({lang.id})</span>
-                </div>
-              ))}
-              {filteredLanguages.length === 0 && (
-                <div className="quickpick-item" style={{ opacity: 0.5, pointerEvents: 'none' }}>
-                  {t('langPalette.noMatch')}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* === 新規ファイル名入力用パレット (v16) === */}
-      {showNewFilePalette && (
-        <div className="quickpick-overlay" onClick={() => setShowNewFilePalette(false)}>
-          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
-            <div className="quickpick-input-wrapper">
-              <div className="quickpick-title">{t('newFile.title')}</div>
-              <input
-                ref={newFileInputRef}
-                className="quickpick-input"
-                type="text"
-                placeholder={t('newFile.placeholder')}
-                value={newFileNameInput}
-                onChange={(e) => setNewFileNameInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') confirmCreateFile();
-                  if (e.key === 'Escape') setShowNewFilePalette(false);
-                }}
-                autoFocus
-              />
-            </div>
-            <div
-              style={{
-                padding: '8px 12px',
-                fontSize: '12px',
-                opacity: 0.6,
-                borderTop: '1px solid var(--border-color)',
-              }}
-            >
-              {t('newFile.hint')}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* === 確認パレット (保存しますか？ 等) (v17) === */}
-      {showConfirmPalette && (
-        <div className="quickpick-overlay" onClick={showConfirmPalette.onCancel}>
-          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
-            <div
-              className="quickpick-header"
-              style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}
-            >
-              <div style={{ fontSize: '13px', fontWeight: 600 }}>{showConfirmPalette.title}</div>
-              {showConfirmPalette.message && (
-                <div style={{ fontSize: '12px', opacity: 0.7, marginTop: '4px' }}>
-                  {showConfirmPalette.message}
-                </div>
-              )}
-            </div>
-            <div className="quickpick-list" style={{ maxHeight: 'none' }}>
-              <div className="quickpick-item" onClick={showConfirmPalette.onConfirm}>
-                <div className="quickpick-item-info">
-                  <div className="quickpick-item-label">{t('confirm.saveAndClose')}</div>
-                  <div className="quickpick-item-desc">{t('confirm.saveAndCloseDesc')}</div>
-                </div>
-              </div>
-              <div className="quickpick-item" onClick={showConfirmPalette.onDeny}>
-                <div className="quickpick-item-info">
-                  <div className="quickpick-item-label" style={{ color: 'var(--accent-color)' }}>
-                    {t('confirm.closeWithoutSave')}
-                  </div>
-                  <div className="quickpick-item-desc">{t('confirm.closeWithoutSaveDesc')}</div>
-                </div>
-              </div>
-              <div className="context-menu-separator" style={{ margin: 0 }} />
-              <div className="quickpick-item" onClick={showConfirmPalette.onCancel}>
-                <div className="quickpick-item-info">
-                  <div className="quickpick-item-label">{t('confirm.cancel')}</div>
-                  <div className="quickpick-item-desc">{t('confirm.cancelDesc')}</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* === 言語切り替えパレット (v35) === */}
-      {showLangSwitchPalette && (
-        <div className="quickpick-overlay" onClick={() => setShowLangSwitchPalette(false)}>
-          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
-            <div className="quickpick-input-wrapper">
-              <div className="quickpick-title">{t('langSwitch.title')}</div>
-            </div>
-            <div className="quickpick-list" style={{ maxHeight: 'none' }}>
-              <div
-                className={`quickpick-item ${settings.language === 'ja' ? 'active' : ''}`}
-                onClick={() => {
-                  setSettings({ ...settings, language: 'ja' });
-                  configureMonacoLocale('ja');
-                  setShowLangSwitchPalette(false);
-                }}
-              >
-                <Languages size={16} />
-                <span className="quickpick-item-label">{t('langSwitch.ja')}</span>
-              </div>
-              <div
-                className={`quickpick-item ${settings.language === 'en' ? 'active' : ''}`}
-                onClick={() => {
-                  setSettings({ ...settings, language: 'en' });
-                  configureMonacoLocale('en');
-                  setShowLangSwitchPalette(false);
-                }}
-              >
-                <Languages size={16} />
-                <span className="quickpick-item-label">{t('langSwitch.en')}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <QuickPickLayer
+        t={t}
+        showLanguagePalette={showLanguagePalette}
+        setShowLanguagePalette={setShowLanguagePalette}
+        languageSearch={languageSearch}
+        setLanguageSearch={setLanguageSearch}
+        languageInputRef={languageInputRef}
+        handleLanguagePaletteKeyDown={handleLanguagePaletteKeyDown}
+        filteredLanguages={filteredLanguages}
+        activeFileLanguage={activeFile?.language}
+        selectLanguage={selectLanguage}
+        showNewFilePalette={showNewFilePalette}
+        setShowNewFilePalette={setShowNewFilePalette}
+        newFileNameInput={newFileNameInput}
+        setNewFileNameInput={setNewFileNameInput}
+        confirmCreateFile={confirmCreateFile}
+        newFileInputRef={newFileInputRef}
+        showConfirmPalette={showConfirmPalette}
+        showLangSwitchPalette={showLangSwitchPalette}
+        setShowLangSwitchPalette={setShowLangSwitchPalette}
+        settingsLanguage={settings.language}
+        setSettingsLanguage={setSettingsLanguage}
+      />
 
       <main
         className="app-main"
@@ -2024,1288 +1687,110 @@ function App() {
         onDragLeave={handleDragLeave}
         style={{ position: 'relative' }}
       >
-        {/* D&D時のオーバーレイ UI */}
-        {isDraggingOver && (
-          <div className="drag-overlay">
-            <div className="drag-overlay-content">
-              <FolderOpen size={48} />
-              <span>{t('dnd.drop')}</span>
-            </div>
-          </div>
-        )}
-
-        <div className="activity-bar">
-          {/* compact モード時のハンバーガーメニュー */}
-          {effectiveMenuBarMode === 'compact' && (
-            <div style={{ position: 'relative' }}>
-              <div
-                className="activity-icon"
-                data-tooltip-right={t('menu.compact.tooltip')}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  if (hamburgerMenu) {
-                    setHamburgerMenu(null);
-                    setHamburgerSubMenu(null);
-                  } else {
-                    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-                    setHamburgerMenu({ x: rect.right + 2, y: rect.top });
-                  }
-                }}
-              >
-                <span className="activity-material-icon" aria-hidden="true">
-                  menu
-                </span>
-              </div>
-              {hamburgerMenu && (
-                <div
-                  className="context-menu hamburger-context-menu"
-                  style={{ top: 0, left: '100%', marginLeft: '2px' }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  {/* ファイルカテゴリ */}
-                  <div
-                    className={`context-menu-item has-submenu ${hamburgerSubMenu === 'file' ? 'active' : ''}`}
-                    onMouseEnter={() => setHamburgerSubMenu('file')}
-                    onClick={() => setHamburgerSubMenu(hamburgerSubMenu === 'file' ? null : 'file')}
-                  >
-                    <span>{t('menu.file')}</span>
-                  </div>
-                  {hamburgerSubMenu === 'file' && (
-                    <div className="hamburger-sub-menu" style={{ top: 0 }}>
-                      <div
-                        className="context-menu-item"
-                        onClick={() => {
-                          openNewFilePalette();
-                          setHamburgerMenu(null);
-                        }}
-                      >
-                        <span>{t('menu.file.new')}</span>
-                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
-                          Ctrl+K, N
-                        </span>
-                      </div>
-                      <div
-                        className="context-menu-item"
-                        onClick={() => {
-                          openFileFromDisk();
-                          setHamburgerMenu(null);
-                        }}
-                      >
-                        <span>{t('menu.file.open')}</span>
-                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
-                          Ctrl+O
-                        </span>
-                      </div>
-                      <div className="context-menu-separator" />
-                      <div
-                        className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
-                        onClick={
-                          hasActiveFile
-                            ? () => {
-                                handleSave();
-                                setHamburgerMenu(null);
-                              }
-                            : undefined
-                        }
-                      >
-                        <span>{t('menu.file.save')}</span>
-                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
-                          Ctrl+S
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 編集カテゴリ */}
-                  <div
-                    className={`context-menu-item has-submenu ${hamburgerSubMenu === 'edit' ? 'active' : ''}`}
-                    onMouseEnter={() => setHamburgerSubMenu('edit')}
-                    onClick={() => setHamburgerSubMenu(hamburgerSubMenu === 'edit' ? null : 'edit')}
-                  >
-                    <span>{t('menu.edit')}</span>
-                  </div>
-                  {hamburgerSubMenu === 'edit' && (
-                    <div className="hamburger-sub-menu" style={{ top: '30px' }}>
-                      <div
-                        className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
-                        onClick={
-                          hasActiveFile
-                            ? () => {
-                                triggerUndo();
-                                setHamburgerMenu(null);
-                              }
-                            : undefined
-                        }
-                      >
-                        <span>{t('menu.edit.undo')}</span>
-                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
-                          Ctrl+Z
-                        </span>
-                      </div>
-                      <div
-                        className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
-                        onClick={
-                          hasActiveFile
-                            ? () => {
-                                triggerRedo();
-                                setHamburgerMenu(null);
-                              }
-                            : undefined
-                        }
-                      >
-                        <span>{t('menu.edit.redo')}</span>
-                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
-                          Ctrl+Y
-                        </span>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 表示カテゴリ */}
-                  <div
-                    className={`context-menu-item has-submenu ${hamburgerSubMenu === 'view' ? 'active' : ''}`}
-                    onMouseEnter={() => setHamburgerSubMenu('view')}
-                    onClick={() => setHamburgerSubMenu(hamburgerSubMenu === 'view' ? null : 'view')}
-                  >
-                    <span>{t('menu.view')}</span>
-                  </div>
-                  {hamburgerSubMenu === 'view' && (
-                    <div className="hamburger-sub-menu" style={{ top: '60px' }}>
-                      <div
-                        className="context-menu-item"
-                        onClick={() => {
-                          triggerCommandPalette();
-                          setHamburgerMenu(null);
-                        }}
-                      >
-                        <span>{t('menu.view.commandPalette')}</span>
-                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
-                          F1
-                        </span>
-                      </div>
-                      <div className="context-menu-separator" />
-                      <div
-                        className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
-                        onClick={
-                          hasActiveFile
-                            ? () => {
-                                setShowPreview(!showPreview);
-                                setHamburgerMenu(null);
-                              }
-                            : undefined
-                        }
-                      >
-                        <span>
-                          {showPreview ? t('menu.view.previewClose') : t('menu.view.previewOpen')}
-                        </span>
-                      </div>
-                      <div
-                        className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
-                        onClick={
-                          hasActiveFile
-                            ? () => {
-                                setShowLangSwitchPalette(true);
-                                setHamburgerMenu(null);
-                              }
-                            : undefined
-                        }
-                      >
-                        <span>{t('menu.view.language')}</span>
-                      </div>
-                      <div
-                        className="context-menu-item"
-                        onClick={() => {
-                          setIsSettingsOpen(true);
-                          setShowSettingsTab(true);
-                          setHamburgerMenu(null);
-                        }}
-                      >
-                        <span>{t('menu.view.settings')}</span>
-                        <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
-                          Ctrl+,
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-          <div
-            className={`activity-icon ${activeSidebarTab === 'explorer' && isSidebarOpen ? 'active' : ''}`}
-            data-tooltip-right={t('activity.explorer')}
-            onClick={() => {
-              if (activeSidebarTab === 'explorer') setIsSidebarOpen(!isSidebarOpen);
-              else {
-                setActiveSidebarTab('explorer');
-                setIsSidebarOpen(true);
-              }
-            }}
-          >
-            <span className="activity-material-icon" aria-hidden="true">
-              folder
-            </span>
-          </div>
-          <div
-            className={`activity-icon ${activeSidebarTab === 'outline' && isSidebarOpen ? 'active' : ''}`}
-            data-tooltip-right={t('activity.outline')}
-            onClick={() => {
-              if (activeSidebarTab === 'outline') setIsSidebarOpen(!isSidebarOpen);
-              else {
-                setActiveSidebarTab('outline');
-                setIsSidebarOpen(true);
-              }
-            }}
-          >
-            <span className="activity-material-icon" aria-hidden="true">
-              format_list_bulleted
-            </span>
-          </div>
-          <div
-            className={`activity-icon ${activeSidebarTab === 'docs' && isSidebarOpen ? 'active' : ''}`}
-            data-tooltip-right={t('activity.docs')}
-            onClick={() => {
-              if (activeSidebarTab === 'docs') setIsSidebarOpen(!isSidebarOpen);
-              else {
-                setActiveSidebarTab('docs');
-                setIsSidebarOpen(true);
-                // Docs表示時は横スクロールなしで読めるよう最低幅を確保
-                setSidebarWidth((prev) => Math.max(prev, 360));
-              }
-            }}
-          >
-            <span className="activity-material-icon" aria-hidden="true">
-              menu_book
-            </span>
-          </div>
-          <div style={{ flex: 1 }}></div>
-          <div
-            className="activity-icon"
-            data-tooltip-right={t('activity.settings')}
-            onClick={() => {
-              setIsSettingsOpen(true);
-              setShowSettingsTab(true);
-            }}
-          >
-            <span className="activity-material-icon" aria-hidden="true">
-              settings
-            </span>
-          </div>
-        </div>
-
-        <div
-          className={`side-bar ${isSidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}
-          style={{ width: isSidebarOpen ? sidebarWidth : 0 }}
-        >
-          <div className="side-bar-header">
-            {activeSidebarTab === 'explorer' ? (
-              <div className="sidebar-header">
-                <h3>{t('sidebar.explorer')}</h3>
-                <div style={{ display: 'flex', gap: '8px' }}>
-                  <button
-                    className="sidebar-action-btn"
-                    onClick={openNewFilePalette}
-                    data-tooltip={t('sidebar.newFile')}
-                  >
-                    <Plus size={16} />
-                  </button>
-                  <button
-                    className="sidebar-action-btn"
-                    onClick={openFileFromDisk}
-                    data-tooltip={t('sidebar.openFile')}
-                  >
-                    <FolderOpen size={16} />
-                  </button>
-                </div>
-              </div>
-            ) : activeSidebarTab === 'outline' ? (
-              <span
-                style={{
-                  padding: '10px 15px',
-                  display: 'block',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  opacity: 0.8,
-                }}
-              >
-                {t('sidebar.outline')}
-              </span>
-            ) : (
-              <span
-                style={{
-                  padding: '10px 15px',
-                  display: 'block',
-                  fontSize: '11px',
-                  fontWeight: 600,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.5px',
-                  opacity: 0.8,
-                }}
-              >
-                MARKDOWN DOCS
-              </span>
-            )}
-          </div>
-          <div
-            className="side-bar-content"
-            style={{ padding: 0, overflowY: 'auto', flex: 1 }}
-            onContextMenu={(e) => {
-              // エクスプローラーモードの時だけ余白右クリックを処理
-              if (activeSidebarTab === 'explorer') {
-                e.preventDefault();
-                setContextMenu({ x: e.clientX, y: e.clientY });
-              }
-            }}
-          >
-            {activeSidebarTab === 'explorer' ? (
-              <ul className="explorer-list">
-                {files.map((file) => (
-                  <li
-                    key={file.id}
-                    className={`explorer-item ${activeFileId === file.id ? 'active' : ''}`}
-                    onClick={() => activateFile(file.id)}
-                    onContextMenu={(e) => handleContextMenu(e, file.id)}
-                  >
-                    {renderFileTypeIcon(file.name)}
-                    <div
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '6px',
-                        flex: 1,
-                        minWidth: 0,
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontSize: '13px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          flex: 1,
-                        }}
-                      >
-                        {file.name}
-                      </span>
-                      {getIsDirty(file) && <span className="dirty-marker">*</span>}
-                    </div>
-                    <button
-                      className="explorer-close-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        closeFile(e, file.id);
-                      }}
-                      data-tooltip={t('sidebar.close')}
-                    >
-                      <X size={14} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : activeSidebarTab === 'outline' ? (
-              <div className="outline-list" style={{ padding: '8px 0' }}>
-                {outlineItems.length > 0 ? (
-                  outlineItems.map((item, index) => (
-                    <div
-                      key={index}
-                      className={`outline-item outline-level-${item.level}`}
-                      onClick={() => jumpToLine(item.line)}
-                      data-tooltip={item.text}
-                    >
-                      {item.text}
-                    </div>
-                  ))
-                ) : (
-                  <div
-                    style={{
-                      padding: '10px 20px',
-                      fontSize: '12px',
-                      color: 'var(--activity-icon)',
-                    }}
-                  >
-                    {t('sidebar.noHeadings')}
-                  </div>
-                )}
-              </div>
-            ) : (
-              // Markdown Docs タブ
-              <div
-                style={{
-                  padding: '12px',
-                  fontSize: '13px',
-                  lineHeight: 1.6,
-                  color: 'var(--text-color)',
-                }}
-              >
-                <p style={{ marginBottom: '16px', fontSize: '12px', opacity: 0.8 }}>
-                  {t('docs.intro')}
-                </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  <div
-                    className="docs-item"
-                    style={{
-                      borderBottom: '1px solid var(--sidebar-border)',
-                      paddingBottom: '12px',
-                    }}
-                  >
-                    <div
-                      style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}
-                    >
-                      {t('docs.headings')}
-                    </div>
-                    <code
-                      style={{
-                        display: 'block',
-                        padding: '4px 8px',
-                        background: 'var(--input-bg)',
-                        borderRadius: '4px',
-                        marginBottom: '8px',
-                        whiteSpace: 'pre-wrap',
-                      }}
-                    >
-                      # Heading 1<br />
-                      ## Heading 2<br />
-                      ### Heading 3
-                    </code>
-                    <div
-                      className="preview-pane docs-preview"
-                      style={{
-                        padding: '8px',
-                        border: '1px solid var(--toolbar-border)',
-                        borderRadius: '4px',
-                        background: 'var(--editor-bg)',
-                      }}
-                    >
-                      <h1>Heading 1</h1>
-                      <h2>Heading 2</h2>
-                      <h3>Heading 3</h3>
-                    </div>
-                  </div>
-
-                  <div
-                    className="docs-item"
-                    style={{
-                      borderBottom: '1px solid var(--sidebar-border)',
-                      paddingBottom: '12px',
-                    }}
-                  >
-                    <div
-                      style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}
-                    >
-                      {t('docs.emphasis')}
-                    </div>
-                    <code
-                      style={{
-                        display: 'block',
-                        padding: '4px 8px',
-                        background: 'var(--input-bg)',
-                        borderRadius: '4px',
-                        marginBottom: '8px',
-                        whiteSpace: 'pre-wrap',
-                      }}
-                    >
-                      **Bold**
-                      <br />
-                      *Italic*
-                      <br />
-                      ~~Strikethrough~~
-                    </code>
-                    <div
-                      className="preview-pane docs-preview"
-                      style={{
-                        padding: '8px',
-                        border: '1px solid var(--toolbar-border)',
-                        borderRadius: '4px',
-                        background: 'var(--editor-bg)',
-                      }}
-                    >
-                      <p>
-                        <strong>Bold</strong>
-                        <br />
-                        <em>Italic</em>
-                        <br />
-                        <del>Strikethrough</del>
-                      </p>
-                    </div>
-                  </div>
-
-                  <div
-                    className="docs-item"
-                    style={{
-                      borderBottom: '1px solid var(--sidebar-border)',
-                      paddingBottom: '12px',
-                    }}
-                  >
-                    <div
-                      style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}
-                    >
-                      {t('docs.lists')}
-                    </div>
-                    <code
-                      style={{
-                        display: 'block',
-                        padding: '4px 8px',
-                        background: 'var(--input-bg)',
-                        borderRadius: '4px',
-                        marginBottom: '8px',
-                        whiteSpace: 'pre-wrap',
-                      }}
-                    >{`- Item 1\n- Item 2\n  - Sub item`}</code>
-                    <div
-                      className="preview-pane docs-preview"
-                      style={{
-                        padding: '8px',
-                        border: '1px solid var(--toolbar-border)',
-                        borderRadius: '4px',
-                        background: 'var(--editor-bg)',
-                      }}
-                    >
-                      <ul>
-                        <li>Item 1</li>
-                        <li>
-                          Item 2
-                          <ul>
-                            <li>Sub item</li>
-                          </ul>
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
-
-                  <div
-                    className="docs-item"
-                    style={{
-                      borderBottom: '1px solid var(--sidebar-border)',
-                      paddingBottom: '12px',
-                    }}
-                  >
-                    <div
-                      style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}
-                    >
-                      {t('docs.codeBlock')}
-                    </div>
-                    <code
-                      style={{
-                        display: 'block',
-                        padding: '4px 8px',
-                        background: 'var(--input-bg)',
-                        borderRadius: '4px',
-                        marginBottom: '8px',
-                        whiteSpace: 'pre-wrap',
-                      }}
-                    >
-                      ```javascript
-                      <br />
-                      const foo = 'bar';
-                      <br />
-                      ```
-                    </code>
-                    <div
-                      className="preview-pane docs-preview"
-                      style={{
-                        padding: '8px',
-                        border: '1px solid var(--toolbar-border)',
-                        borderRadius: '4px',
-                        background: 'var(--editor-bg)',
-                      }}
-                    >
-                      <pre style={{ margin: 0, padding: '4px' }}>
-                        <code>
-                          <span style={{ color: '#569cd6' }}>const</span> foo ={' '}
-                          <span style={{ color: '#ce9178' }}>'bar'</span>;
-                        </code>
-                      </pre>
-                    </div>
-                  </div>
-
-                  <div
-                    className="docs-item"
-                    style={{
-                      borderBottom: '1px solid var(--sidebar-border)',
-                      paddingBottom: '12px',
-                    }}
-                  >
-                    <div
-                      style={{ fontWeight: 600, marginBottom: '4px', color: 'var(--accent-color)' }}
-                    >
-                      {t('docs.alerts')}
-                    </div>
-                    <code
-                      style={{
-                        display: 'block',
-                        padding: '4px 8px',
-                        background: 'var(--input-bg)',
-                        borderRadius: '4px',
-                        marginBottom: '8px',
-                        whiteSpace: 'pre-wrap',
-                      }}
-                    >
-                      &gt; [!NOTE]
-                      <br />
-                      &gt; Content here
-                    </code>
-                    <div
-                      className="preview-pane docs-preview"
-                      style={{
-                        padding: '8px',
-                        border: '1px solid var(--toolbar-border)',
-                        borderRadius: '4px',
-                        background: 'var(--editor-bg)',
-                      }}
-                    >
-                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkAlert]}>
-                        {`> [!NOTE]\n> Note content\n\n> [!WARNING]\n> Warning content`}
-                      </ReactMarkdown>
-                    </div>
-                  </div>
-
-                  <div style={{ fontSize: '12px', opacity: 0.7, paddingTop: '8px' }}>
-                    {t('docs.reference')}
-                    <a
-                      href="https://www.tohoho-web.com/ex/markdown.html"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      style={{ color: 'var(--accent-color)' }}
-                    >
-                      {t('docs.referenceLink')}
-                    </a>
-                    {t('docs.referenceSuffix')}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-        <div
-          className="resizer-x"
-          onMouseDown={startResizingSidebar}
-          title={t('resizer.tooltip')}
+        <SidebarPanel
+          t={t}
+          effectiveMenuBarMode={effectiveMenuBarMode}
+          hamburgerMenu={hamburgerMenu}
+          setHamburgerMenu={setHamburgerMenu}
+          hamburgerSubMenu={hamburgerSubMenu}
+          setHamburgerSubMenu={setHamburgerSubMenu}
+          openNewFilePalette={openNewFilePalette}
+          openFileFromDisk={openFileFromDisk}
+          hasActiveFile={hasActiveFile}
+          handleSave={handleSave}
+          triggerUndo={triggerUndo}
+          triggerRedo={triggerRedo}
+          triggerCommandPalette={triggerCommandPalette}
+          showPreview={showPreview}
+          setShowPreview={setShowPreview}
+          setShowLangSwitchPalette={setShowLangSwitchPalette}
+          setIsSettingsOpen={setIsSettingsOpen}
+          setShowSettingsTab={setShowSettingsTab}
+          activeSidebarTab={activeSidebarTab}
+          isSidebarOpen={isSidebarOpen}
+          setIsSidebarOpen={setIsSidebarOpen}
+          setActiveSidebarTab={setActiveSidebarTab}
+          setSidebarWidth={setSidebarWidth}
+          sidebarWidth={sidebarWidth}
+          files={files}
+          activeFileId={activeFileId}
+          activateFile={activateFile}
+          handleContextMenu={handleContextMenu}
+          closeFile={closeFile}
+          getIsDirty={getIsDirty}
+          outlineItems={outlineItems}
+          jumpToLine={jumpToLine}
+          setContextMenu={setContextMenu}
+          startResizingSidebar={startResizingSidebar}
         />
-        <div className="editor-container">
-          <div className="tabs-container">
-            {files.map((file) => {
-              return (
-                <div
-                  key={file.id}
-                  className={`editor-tab ${!isSettingsOpen && file.id === activeFileId ? 'active' : ''} ${
-                    !settings.showTabFileName ? 'tab-name-icon-only' : ''
-                  }`}
-                  onClick={() => {
-                    setActiveFileId(file.id);
-                    setIsSettingsOpen(false);
-                  }}
-                >
-                  {renderFileTypeIcon(file.name)}
-                  {settings.showTabFileName && <span className="tab-title">{file.name}</span>}
-                  {getIsDirty(file) && <span className="dirty-marker">*</span>}
-                  <button
-                    className="tab-close-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      closeFile(e, file.id);
-                    }}
-                    data-tooltip="閉じる"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
-              );
-            })}
-            {/* 設定タブ */}
-            {showSettingsTab && (
-              <div
-                className={`editor-tab ${isSettingsOpen ? 'active' : ''}`}
-                onClick={() => setIsSettingsOpen(true)}
-              >
-                <Settings size={14} />
-                <span className="tab-title">設定</span>
-                <button
-                  className="tab-close-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsSettingsOpen(false);
-                    setShowSettingsTab(false);
-                  }}
-                  data-tooltip="閉じる"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            )}
-          </div>
 
-          {/* 設定タブが開いていない時、かつファイルが開いている時のみツールバーを表示 */}
-          {!isSettingsOpen && activeFile && (
-            <Toolbar
-              onInsertMarkdown={insertMarkdown}
-              onSave={handleSave}
-              onTogglePreview={() => setShowPreview(!showPreview)}
-              showPreview={showPreview}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-            />
-          )}
+        <EditorPane
+          t={t}
+          files={files}
+          activeFileId={activeFileId}
+          setActiveFileId={setActiveFileId}
+          isSettingsOpen={isSettingsOpen}
+          setIsSettingsOpen={setIsSettingsOpen}
+          showSettingsTab={showSettingsTab}
+          setShowSettingsTab={setShowSettingsTab}
+          settings={settings}
+          setSettings={applySettings}
+          isSettingModified={isSettingModified}
+          resetSettingsToDefault={resetSettingsToDefault}
+          setNumericSetting={setNumericSetting}
+          configureMonacoLocale={configureMonacoLocale}
+          activeFile={activeFile}
+          showPreview={showPreview}
+          setShowPreview={setShowPreview}
+          insertMarkdown={insertMarkdown}
+          handleSave={handleSave}
+          handleUndo={handleUndo}
+          handleRedo={handleRedo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          getIsDirty={getIsDirty}
+          closeFile={closeFile}
+          handleEditorChange={handleEditorChange}
+          handleEditorWillMount={handleEditorWillMount}
+          handleEditorDidMount={handleEditorDidMount}
+          activeTheme={activeTheme}
+          startResizingPreview={startResizingPreview}
+          previewWidth={previewWidth}
+          logoImage={logoImage}
+        />
 
-          {/* モバイル時にプレビューが有効であればクラス preview-mobile-active を付与 */}
-          <div
-            className={`split-view-container ${showPreview && activeFile ? 'preview-mobile-active' : ''}`}
-          >
-            {isSettingsOpen ? (
-              /* === 設定画面 (タブ内表示) === */
-              <div className="settings-tab-content">
-                <div className="settings-tab-header">
-                  <h2 className="settings-tab-title">{t('settings.title')}</h2>
-                  <button
-                    type="button"
-                    className="settings-reset-btn"
-                    onClick={resetSettingsToDefault}
-                  >
-                    <RotateCcw size={13} />
-                    <span>{t('settings.resetDefaults')}</span>
-                  </button>
-                </div>
-                <div className="settings-content">
-                  <div className={`setting-row ${isSettingModified('language') ? 'modified' : ''}`}>
-                    <span className="setting-label">
-                      <span className="setting-material-icon" aria-hidden="true">
-                        language
-                      </span>
-                      {t('settings.language')}
-                    </span>
-                    <select
-                      className="setting-input"
-                      style={{ fontFamily: settings.uiFont }}
-                      value={settings.language}
-                      onChange={(e) => {
-                        const newLang = e.target.value as 'ja' | 'en';
-                        setSettings({ ...settings, language: newLang });
-                        configureMonacoLocale(newLang);
-                      }}
-                    >
-                      <option value="ja">{t('langSwitch.ja')}</option>
-                      <option value="en">{t('langSwitch.en')}</option>
-                    </select>
-                  </div>
-                  <div
-                    className={`setting-row ${isSettingModified('menuBarVisibility') ? 'modified' : ''}`}
-                  >
-                    <span className="setting-label">
-                      <span className="setting-material-icon" aria-hidden="true">
-                        menu_open
-                      </span>
-                      {t('settings.menuBarVisibility')}
-                    </span>
-                    <select
-                      className="setting-input"
-                      style={{ fontFamily: settings.uiFont }}
-                      value={settings.menuBarVisibility}
-                      onChange={(e) =>
-                        setSettings({
-                          ...settings,
-                          menuBarVisibility: e.target.value as
-                            | 'visible'
-                            | 'hidden'
-                            | 'compact'
-                            | 'toggle',
-                        })
-                      }
-                    >
-                      <option value="visible">{t('settings.menuBar.visible')}</option>
-                      <option value="hidden">{t('settings.menuBar.hidden')}</option>
-                      <option value="compact">{t('settings.menuBar.compact')}</option>
-                      <option value="toggle">{t('settings.menuBar.toggle')}</option>
-                    </select>
-                  </div>
-                  <div
-                    className={`setting-row ${isSettingModified('showTabFileName') ? 'modified' : ''}`}
-                  >
-                    <span className="setting-label">
-                      <span className="setting-material-icon" aria-hidden="true">
-                        tab
-                      </span>
-                      {t('settings.showTabFileName')}
-                    </span>
-                    <div
-                      className={`toggle-switch ${settings.showTabFileName ? 'active' : ''}`}
-                      onClick={() =>
-                        setSettings({ ...settings, showTabFileName: !settings.showTabFileName })
-                      }
-                    >
-                      <span className="toggle-icon">
-                        {settings.showTabFileName ? (
-                          <Check size={12} strokeWidth={3} />
-                        ) : (
-                          <X size={12} strokeWidth={3} />
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                  <div className={`setting-row ${isSettingModified('fontSize') ? 'modified' : ''}`}>
-                    <span className="setting-label">
-                      <span className="setting-material-icon" aria-hidden="true">
-                        format_size
-                      </span>
-                      {t('settings.fontSize')}
-                    </span>
-                    <div className="setting-number-control">
-                      <input
-                        type="number"
-                        className="setting-input setting-number-input"
-                        value={settings.fontSize}
-                        onChange={(e) =>
-                          setNumericSetting('fontSize', Number(e.target.value), 14, 8, 72)
-                        }
-                        min={8}
-                        max={72}
-                      />
-                      <div className="setting-number-buttons">
-                        <button
-                          type="button"
-                          className="setting-step-btn"
-                          onClick={() =>
-                            setNumericSetting('fontSize', settings.fontSize + 1, 14, 8, 72)
-                          }
-                          aria-label="Increase font size"
-                        >
-                          <ChevronUp size={11} />
-                        </button>
-                        <button
-                          type="button"
-                          className="setting-step-btn"
-                          onClick={() =>
-                            setNumericSetting('fontSize', settings.fontSize - 1, 14, 8, 72)
-                          }
-                          aria-label="Decrease font size"
-                        >
-                          <ChevronDown size={11} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div
-                    className={`setting-row ${isSettingModified('lineHeight') ? 'modified' : ''}`}
-                  >
-                    <span className="setting-label">
-                      <span className="setting-material-icon" aria-hidden="true">
-                        format_line_spacing
-                      </span>
-                      {t('settings.lineHeight')}
-                    </span>
-                    <div className="setting-number-control">
-                      <input
-                        type="number"
-                        className="setting-input setting-number-input"
-                        value={settings.lineHeight}
-                        onChange={(e) =>
-                          setNumericSetting('lineHeight', Number(e.target.value), 24, 12, 100)
-                        }
-                        min={12}
-                        max={100}
-                      />
-                      <div className="setting-number-buttons">
-                        <button
-                          type="button"
-                          className="setting-step-btn"
-                          onClick={() =>
-                            setNumericSetting('lineHeight', settings.lineHeight + 1, 24, 12, 100)
-                          }
-                          aria-label="Increase line height"
-                        >
-                          <ChevronUp size={11} />
-                        </button>
-                        <button
-                          type="button"
-                          className="setting-step-btn"
-                          onClick={() =>
-                            setNumericSetting('lineHeight', settings.lineHeight - 1, 24, 12, 100)
-                          }
-                          aria-label="Decrease line height"
-                        >
-                          <ChevronDown size={11} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                  <div className={`setting-row ${isSettingModified('minimap') ? 'modified' : ''}`}>
-                    <span className="setting-label">
-                      <span className="setting-material-icon" aria-hidden="true">
-                        picture_in_picture_alt
-                      </span>
-                      {t('settings.minimap')}
-                    </span>
-                    <div
-                      className={`toggle-switch ${settings.minimap ? 'active' : ''}`}
-                      onClick={() => setSettings({ ...settings, minimap: !settings.minimap })}
-                    >
-                      <span className="toggle-icon">
-                        {settings.minimap ? (
-                          <Check size={12} strokeWidth={3} />
-                        ) : (
-                          <X size={12} strokeWidth={3} />
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                  <div
-                    className={`setting-row ${isSettingModified('showCommandBar') ? 'modified' : ''}`}
-                  >
-                    <span className="setting-label">
-                      <span className="setting-material-icon" aria-hidden="true">
-                        search
-                      </span>
-                      {t('settings.showCommandBar')}
-                    </span>
-                    <div
-                      className={`toggle-switch ${settings.showCommandBar ? 'active' : ''}`}
-                      onClick={() =>
-                        setSettings({ ...settings, showCommandBar: !settings.showCommandBar })
-                      }
-                    >
-                      <span className="toggle-icon">
-                        {settings.showCommandBar ? (
-                          <Check size={12} strokeWidth={3} />
-                        ) : (
-                          <X size={12} strokeWidth={3} />
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                  <div className={`setting-row ${isSettingModified('wordWrap') ? 'modified' : ''}`}>
-                    <span className="setting-label">
-                      <span className="setting-material-icon" aria-hidden="true">
-                        wrap_text
-                      </span>
-                      {t('settings.wordWrap')}
-                    </span>
-                    <div
-                      className={`toggle-switch ${settings.wordWrap === 'on' ? 'active' : ''}`}
-                      onClick={() =>
-                        setSettings({
-                          ...settings,
-                          wordWrap: settings.wordWrap === 'on' ? 'off' : 'on',
-                        })
-                      }
-                    >
-                      <span className="toggle-icon">
-                        {settings.wordWrap === 'on' ? (
-                          <Check size={12} strokeWidth={3} />
-                        ) : (
-                          <X size={12} strokeWidth={3} />
-                        )}
-                      </span>
-                    </div>
-                  </div>
-                  <div className={`setting-row ${isSettingModified('uiFont') ? 'modified' : ''}`}>
-                    <span className="setting-label">
-                      <span className="setting-material-icon" aria-hidden="true">
-                        text_fields
-                      </span>
-                      {t('settings.uiFont')}
-                    </span>
-                    <select
-                      className="setting-input"
-                      style={{ width: '260px', fontFamily: settings.uiFont }}
-                      value={settings.uiFont}
-                      onChange={(e) => setSettings({ ...settings, uiFont: e.target.value })}
-                    >
-                      <option value="consolas, 'Courier New', monospace">Consolas</option>
-                      <option value="'Inter', 'Noto Sans JP', sans-serif">
-                        Inter & Noto Sans JP
-                      </option>
-                      <option value="'Roboto', 'M PLUS 1p', sans-serif">Roboto & M PLUS 1p</option>
-                      <option value="'Roboto', 'LINE Seed JP', sans-serif">
-                        Roboto & LINE Seed JP
-                      </option>
-                      <option value="'Google Sans', 'Noto Sans JP', sans-serif">
-                        Google Sans & Noto Sans JP
-                      </option>
-                      <option value="'Google Sans Code', 'BIZ UDGothic', sans-serif">
-                        Google Sans Code & BIZ UD
-                      </option>
-                      <option value="'Source Code Pro', monospace">Source Code Pro</option>
-                      {settings.language === 'en' && (
-                        <>
-                          <option value="'Inter', sans-serif, monospace">Inter (EN)</option>
-                          <option value="'Roboto', sans-serif, monospace">Roboto (EN)</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
-                  <div
-                    className={`setting-row ${isSettingModified('editorFont') ? 'modified' : ''}`}
-                  >
-                    <span className="setting-label">
-                      <span className="setting-material-icon" aria-hidden="true">
-                        code
-                      </span>
-                      {t('settings.editorFont')}
-                    </span>
-                    <select
-                      className="setting-input"
-                      style={{ width: '260px', fontFamily: settings.uiFont }}
-                      value={settings.editorFont}
-                      onChange={(e) => setSettings({ ...settings, editorFont: e.target.value })}
-                    >
-                      <option value="consolas, 'Courier New', monospace">Consolas</option>
-                      <option value="'Fira Code', 'Noto Sans JP', monospace">
-                        Fira Code & Noto Sans
-                      </option>
-                      <option value="'JetBrains Mono', 'Noto Sans JP', monospace">
-                        JetBrains Mono & Noto Sans
-                      </option>
-                      <option value="'Roboto Mono', 'BIZ UDGothic', monospace">
-                        Roboto Mono & BIZ UD
-                      </option>
-                      <option value="'Google Sans Code', 'Noto Sans JP', monospace">
-                        Google Sans Code & Noto Sans JP
-                      </option>
-                      <option value="'JetBrains Mono', 'BIZ UDGothic', monospace">
-                        JetBrains Mono & BIZ UD
-                      </option>
-                      {settings.language === 'en' && (
-                        <>
-                          <option value="'JetBrains Mono', monospace">JetBrains Mono (EN)</option>
-                          <option value="'Fira Code', monospace">Fira Code (EN)</option>
-                          <option value="'Cascadia Code', monospace">Cascadia Code (EN)</option>
-                          <option value="'Source Code Pro', monospace">Source Code Pro (EN)</option>
-                        </>
-                      )}
-                    </select>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              /* === エディターペイン === */
-              <>
-                <div className="editor-pane">
-                  <div className="monaco-wrapper">
-                    {/* activeFileの有無に関わらず、コマンドパレット等を使うために常にエディタを配置する */}
-                    <Editor
-                      height="100%"
-                      defaultLanguage="markdown"
-                      language={activeFile ? activeFile.language || 'markdown' : 'plaintext'}
-                      theme={
-                        activeTheme === 'dark' ? 'vscode-markdown-dark' : 'vscode-markdown-light'
-                      }
-                      value={activeFile ? activeFile.content : ''}
-                      onChange={handleEditorChange}
-                      beforeMount={handleEditorWillMount}
-                      onMount={handleEditorDidMount}
-                      options={{
-                        readOnly: !activeFile, // ファイル未選択時は読み取り専用
-                        minimap: { enabled: settings.minimap },
-                        wordWrap: settings.wordWrap,
-                        fontSize: settings.fontSize,
-                        lineHeight: settings.lineHeight,
-                        padding: { top: 16, bottom: 16 },
-                        scrollBeyondLastLine: false,
-                        smoothScrolling: true,
-                        cursorBlinking: 'smooth',
-                        fontFamily: settings.editorFont, // 設定からフォントを反映
-                        autoClosingQuotes: 'always',
-                        autoClosingBrackets: 'always',
-                        autoClosingOvertype: 'always',
-                        autoSurround: 'languageDefined',
-                      }}
-                    />
-                    {!activeFile && (
-                      <div
-                        className="empty-state-view"
-                        style={{
-                          position: 'absolute',
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          bottom: 0,
-                          zIndex: 10,
-                          backgroundColor: 'var(--editor-bg)',
-                        }}
-                      >
-                        <div className="empty-state-logo">
-                          <img src={logoImage} alt="App Logo" />
-                        </div>
-                        <div className="empty-state-shortcuts">
-                          <div className="shortcut-row">
-                            <span className="shortcut-label">{t('empty.showCommandPalette')}</span>
-                            <span className="shortcut-key">F1</span>
-                          </div>
-                          <div className="shortcut-row">
-                            <span className="shortcut-label">{t('empty.newFile')}</span>
-                            <span className="shortcut-key">Ctrl+K, N</span>
-                          </div>
-                          <div className="shortcut-row">
-                            <span className="shortcut-label">{t('empty.openFile')}</span>
-                            <span className="shortcut-key">Ctrl+O</span>
-                          </div>
-                          <div className="shortcut-row">
-                            <span className="shortcut-label">{t('empty.toggleTheme')}</span>
-                            <span className="shortcut-key">F1 &gt; Theme</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {showPreview && activeFile && (
-                  <>
-                    <div
-                      className="resizer-x"
-                      onMouseDown={startResizingPreview}
-                      title={t('resizer.tooltip')}
-                    />
-                    <div className="preview-pane" style={{ width: previewWidth, flex: 'none' }}>
-                      <ReactMarkdown
-                        remarkPlugins={[remarkGfm, remarkAlert]}
-                        components={{
-                          code({ className, children, ...props }) {
-                            const match = /language-(\w+)/.exec(className || '');
-
-                            return match ? (
-                              <SyntaxHighlighter
-                                style={activeTheme === 'dark' ? vscDarkPlus : vs}
-                                language={match[1]}
-                                PreTag="div"
-                              >
-                                {String(children).replace(/\n$/, '')}
-                              </SyntaxHighlighter>
-                            ) : (
-                              <code className={className} {...props}>
-                                {children}
-                              </code>
-                            );
-                          },
-                        }}
-                      >
-                        {activeFile.content}
-                      </ReactMarkdown>
-                    </div>
-                  </>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* D&D時のオーバーレイ UI は統合されているのでここでは不要 */}
+        <OverlayLayer
+          t={t}
+          isDraggingOver={isDraggingOver}
+          contextMenu={contextMenu}
+          setContextMenu={setContextMenu}
+          filesLength={files.length}
+          handleContextOpen={handleContextOpen}
+          handleContextDelete={handleContextDelete}
+          openNewFilePalette={openNewFilePalette}
+          openFileFromDisk={openFileFromDisk}
+          fileInputRef={fileInputRef}
+          handleFileOpen={handleFileOpen}
+          toastMsg={toastMsg}
+        />
       </main>
 
-      <footer className="status-bar">
-        <div className="status-bar-left">
-          {isChordWaiting && <div className="status-bar-item">{t('status.chordWaiting')}</div>}
-        </div>
-
-        <div className="status-bar-right">
-          {selectionCount > 0 && (
-            <div className="status-bar-item">
-              {selectionCount} {t('status.charSelected')}
-            </div>
-          )}
-          <div
-            className="status-bar-item highlight"
-            style={{ cursor: 'pointer' }}
-            title={t('status.gotoLine')}
-            onClick={() => {
-              if (editorRef.current) {
-                // editorにフォーカスしてGo To Lineパレットを開かせる
-                editorRef.current.focus();
-                editorRef.current.trigger('source', 'editor.action.gotoLine', null);
-              }
-            }}
-          >
-            {t('status.line')} {cursorPos.line}, {t('status.col')} {cursorPos.column}
-          </div>
-          <div
-            className="status-bar-item"
-            onClick={toggleEol}
-            style={{ cursor: 'pointer' }}
-            data-tooltip={t('status.eolTooltip')}
-          >
-            {eolMode}
-          </div>
-          <div className="status-bar-item">UTF-8</div>
-          <span
-            className="status-bar-item highlight"
-            onClick={() => setShowLanguagePalette(true)}
-            data-tooltip={t('status.langMode')}
-          >
-            {activeFile?.language
-              ? activeFile.language.charAt(0).toUpperCase() + activeFile.language.slice(1)
-              : 'Markdown'}
-          </span>
-        </div>
-      </footer>
-
-      {/* コンテキストメニュー（右クリック時に表示） */}
-      {contextMenu && (
-        <div
-          className="context-menu-overlay"
-          onClick={() => setContextMenu(null)}
-          onContextMenu={(e) => {
-            e.preventDefault();
-            setContextMenu(null);
-          }}
-        >
-          <div
-            className="context-menu"
-            style={{ top: contextMenu.y, left: contextMenu.x }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {contextMenu.fileId ? (
-              <>
-                <div className="context-menu-item" onClick={handleContextOpen}>
-                  {t('context.open')}
-                </div>
-                <div className="context-menu-separator" />
-                <div
-                  className={`context-menu-item ${files.length <= 1 ? 'disabled' : 'danger'}`}
-                  onClick={files.length > 1 ? handleContextDelete : undefined}
-                >
-                  {t('context.delete')}
-                </div>
-              </>
-            ) : (
-              <>
-                <div
-                  className="context-menu-item"
-                  onClick={() => {
-                    openNewFilePalette();
-                    setContextMenu(null);
-                  }}
-                >
-                  {t('context.newFile')}
-                </div>
-                <div
-                  className="context-menu-item"
-                  onClick={() => {
-                    openFileFromDisk();
-                    setContextMenu(null);
-                  }}
-                >
-                  {t('context.openFile')}
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-
-      <input
-        type="file"
-        ref={fileInputRef}
-        onChange={handleFileOpen}
-        accept="*/*"
-        style={{ display: 'none' }}
+      <StatusBar
+        t={t}
+        isChordWaiting={isChordWaiting}
+        selectionCount={selectionCount}
+        cursorPos={cursorPos}
+        eolMode={eolMode}
+        onGotoLine={() => {
+          if (editorRef.current) {
+            editorRef.current.focus();
+            editorRef.current.trigger('source', 'editor.action.gotoLine', null);
+          }
+        }}
+        toggleEol={toggleEol}
+        openLanguagePalette={() => setShowLanguagePalette(true)}
+        activeFileLanguage={activeFile?.language}
       />
-
-      {/* エラートースト通知 */}
-      {toastMsg && (
-        <div className="toast-container">
-          <div className="toast-notification">{toastMsg}</div>
-        </div>
-      )}
     </div>
   );
 }

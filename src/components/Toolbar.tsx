@@ -40,6 +40,9 @@ interface ToolbarProps {
   showPreview: boolean;
   onUndo: () => void;
   onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  isMarkdownMode: boolean;
 }
 
 export function Toolbar({
@@ -49,6 +52,9 @@ export function Toolbar({
   showPreview,
   onUndo,
   onRedo,
+  canUndo,
+  canRedo,
+  isMarkdownMode,
 }: ToolbarProps) {
   const [showAlertMenu, setShowAlertMenu] = useState(false);
   const alertMenuRef = useRef<HTMLDivElement>(null);
@@ -69,18 +75,32 @@ export function Toolbar({
   }, [showAlertMenu]);
 
   const insertAlert = (type: string) => {
+    if (!isMarkdownMode) return;
     onInsertMarkdown(`> [!${type}]\n> `, '', 'アラートの内容', true);
     setShowAlertMenu(false);
   };
+
+  // マークダウンモードが有効、かつアラートメニューが開いている時だけ true になる変数
+  const isMenuVisible = isMarkdownMode && showAlertMenu;
 
   return (
     <div className="editor-toolbar">
       <div className="toolbar-inner">
         <div className="toolbar-group">
-          <button className="toolbar-btn" onClick={onUndo} data-tooltip="元に戻す (Ctrl+Z)">
+          <button
+            className="toolbar-btn"
+            onClick={onUndo}
+            disabled={!canUndo}
+            data-tooltip="元に戻す (Ctrl+Z)"
+          >
             <Undo size={16} />
           </button>
-          <button className="toolbar-btn" onClick={onRedo} data-tooltip="やり直す (Ctrl+Y)">
+          <button
+            className="toolbar-btn"
+            onClick={onRedo}
+            disabled={!canRedo}
+            data-tooltip="やり直す (Ctrl+Y)"
+          >
             <Redo size={16} />
           </button>
         </div>
@@ -90,6 +110,7 @@ export function Toolbar({
         <div className="toolbar-group">
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('**', '**', '太字')}
             data-tooltip="太字 (Ctrl+B)"
           >
@@ -97,6 +118,7 @@ export function Toolbar({
           </button>
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('*', '*', '斜体')}
             data-tooltip="斜体 (Ctrl+I)"
           >
@@ -104,6 +126,7 @@ export function Toolbar({
           </button>
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('~~', '~~', '打ち消し線')}
             data-tooltip="打ち消し線"
           >
@@ -116,6 +139,7 @@ export function Toolbar({
         <div className="toolbar-group">
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('# ', '', '見出し1')}
             data-tooltip="見出し 1"
           >
@@ -123,6 +147,7 @@ export function Toolbar({
           </button>
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('## ', '', '見出し2')}
             data-tooltip="見出し 2"
           >
@@ -130,6 +155,7 @@ export function Toolbar({
           </button>
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('### ', '', '見出し3')}
             data-tooltip="見出し 3"
           >
@@ -137,6 +163,7 @@ export function Toolbar({
           </button>
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('#### ', '', '見出し4')}
             data-tooltip="見出し 4"
           >
@@ -144,6 +171,7 @@ export function Toolbar({
           </button>
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('##### ', '', '見出し5')}
             data-tooltip="見出し 5"
           >
@@ -151,6 +179,7 @@ export function Toolbar({
           </button>
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('###### ', '', '見出し6')}
             data-tooltip="見出し 6"
           >
@@ -163,6 +192,7 @@ export function Toolbar({
         <div className="toolbar-group">
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('- ', '', 'リスト項目')}
             data-tooltip="箇条書きリスト"
           >
@@ -170,6 +200,7 @@ export function Toolbar({
           </button>
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('1. ', '', 'リスト項目')}
             data-tooltip="番号付きリスト"
           >
@@ -177,6 +208,7 @@ export function Toolbar({
           </button>
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('- [ ] ', '', 'タスク項目')}
             data-tooltip="タスクリスト"
           >
@@ -189,6 +221,7 @@ export function Toolbar({
         <div className="toolbar-group">
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('> ', '', '引用文')}
             data-tooltip="引用"
           >
@@ -196,16 +229,18 @@ export function Toolbar({
           </button>
           <div ref={alertMenuRef} style={{ position: 'relative' }}>
             <button
-              className={`toolbar-btn ${showAlertMenu ? 'active' : ''}`}
+              className={`toolbar-btn ${isMenuVisible ? 'active' : ''}`}
+              disabled={!isMarkdownMode}
               onClick={() => setShowAlertMenu(!showAlertMenu)}
               data-tooltip="アラート構文"
             >
               <AlertTriangle size={16} />
             </button>
-            {showAlertMenu && (
+            {isMenuVisible && (
               <div className="alert-popup-menu">
                 <button
                   className="toolbar-btn"
+                  disabled={!isMarkdownMode}
                   onClick={() => insertAlert('NOTE')}
                   data-tooltip="Note"
                   style={{ color: '#0969da' }}
@@ -214,6 +249,7 @@ export function Toolbar({
                 </button>
                 <button
                   className="toolbar-btn"
+                  disabled={!isMarkdownMode}
                   onClick={() => insertAlert('TIP')}
                   data-tooltip="Tip"
                   style={{ color: '#1a7f37' }}
@@ -222,6 +258,7 @@ export function Toolbar({
                 </button>
                 <button
                   className="toolbar-btn"
+                  disabled={!isMarkdownMode}
                   onClick={() => insertAlert('IMPORTANT')}
                   data-tooltip="Important"
                   style={{ color: '#8250df' }}
@@ -230,6 +267,7 @@ export function Toolbar({
                 </button>
                 <button
                   className="toolbar-btn"
+                  disabled={!isMarkdownMode}
                   onClick={() => insertAlert('WARNING')}
                   data-tooltip="Warning"
                   style={{ color: '#9a6700' }}
@@ -238,6 +276,7 @@ export function Toolbar({
                 </button>
                 <button
                   className="toolbar-btn"
+                  disabled={!isMarkdownMode}
                   onClick={() => insertAlert('CAUTION')}
                   data-tooltip="Caution"
                   style={{ color: '#d1242f' }}
@@ -254,6 +293,7 @@ export function Toolbar({
         <div className="toolbar-group">
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('```\n', '\n```', 'コードを入力')}
             data-tooltip="コードブロック"
           >
@@ -261,6 +301,7 @@ export function Toolbar({
           </button>
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() =>
               onInsertMarkdown(
                 '| Column 1 | Column 2 |\n| -------- | -------- |\n| Text     | Text     |\n',
@@ -279,6 +320,7 @@ export function Toolbar({
         <div className="toolbar-group">
           <button
             className="toolbar-btn"
+            disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('[', '](https://)', 'リンクテキスト')}
             data-tooltip="リンク"
           >

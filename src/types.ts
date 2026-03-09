@@ -12,6 +12,12 @@ export interface EditorFile {
   // FileSystemFileHandle: File System Access API 用
 }
 
+export interface OutlineItem {
+  level: number;
+  text: string;
+  line: number;
+}
+
 // エディターの設定の型定義
 export interface EditorSettings {
   language: 'ja' | 'en';

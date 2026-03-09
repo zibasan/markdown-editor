@@ -526,8 +526,9 @@ select,
   align-items: center;
   gap: 6px;
   padding: 0 10px 0 15px;
-  min-width: 120px;
-  max-width: 200px;
+  min-width: max-content;
+  max-width: none;
+  flex-shrink: 0;
   background-color: var(--tab-inactive-bg);
   color: var(--text-color);
   border-right: 1px solid var(--tab-border);
@@ -564,10 +565,10 @@ select,
 }
 
 .tab-title {
-  flex: 1;
+  flex: 0 0 auto;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow: visible;
+  text-overflow: clip;
 }
 
 .tab-close-btn {
@@ -1673,4 +1674,9 @@ select,
 
 .titlebar-center-title:hover {
   background-color: var(--toolbar-hover);
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
 }
