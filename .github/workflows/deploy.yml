@@ -43,7 +43,7 @@ jobs:
 
       # 4. ビルドコマンドを pnpm に変更
       - name: Build
-        run: pnpm run build
+        run: pnpm run build:web
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
