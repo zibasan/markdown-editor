@@ -457,80 +457,123 @@ function App() {
   const handleSave = React.useCallback(async () => {
     if (!activeFile) return;
 
+    // Electron環境（アプリとして起動しているか）を判定
+    const isElectron = window.electronAPI !== undefined;
+
     try {
-      let handle = activeFile.handle;
-      if (!handle) {
-        const knownHandle = knownFileHandlesRef.current[activeFile.name];
-        if (knownHandle) {
-          handle = knownHandle;
-        }
-      }
+      if (isElectron) {
+        // ==========================================
+        // 【Electron（デスクトップアプリ）版の保存処理】
+        // ==========================================
 
-      // ハンドルがない（新規ファイルなど）場合は保存ダイアログを表示
-      if (!handle) {
-        try {
-          // @ts-expect-error: File System Access API
-          handle = await window.showSaveFilePicker({
-            suggestedName: activeFile.name,
-            types: [
-              {
-                description: 'Markdown / Text Files',
-                accept: {
-                  'text/markdown': ['.md'],
-                  'text/plain': ['.txt'],
-                },
-              },
-            ],
-          });
-        } catch (err: any) {
-          if (err.name === 'AbortError') return;
-          throw err;
-        }
-      }
+        // すでに保存済みのパスがあればそれを、なければ現在のファイル名をデフォルトパスにする
+        // （※Electron版では handle プロパティにパス文字列を保持する運用とします）
+        const defaultPath =
+          typeof activeFile.handle === 'string' ? activeFile.handle : activeFile.name;
 
-      // ファイルの存在確認 & 書き込み
-      let fileExists = true;
-      try {
-        await handle.getFile();
-      } catch {
-        fileExists = false;
-      }
+        // preload.ts 経由でメインプロセスに保存を依頼
+        // (注意: 現在の main.ts の実装だと毎回ダイアログが出ます。後でサイレント上書きに改修可能です)
+        const savedPath = await window.electronAPI!.saveFile(activeFile.content, defaultPath);
 
-      const writable = await handle.createWritable();
-      await writable.write(activeFile.content);
-      await writable.close();
+        // キャンセルされた場合は何もしない
+        if (!savedPath) return;
 
-      let savedSourceSignature = activeFile.sourceSignature;
-      try {
-        const savedFile = await handle.getFile();
-        savedSourceSignature = getFileSourceSignature(savedFile);
-      } catch {
-        // 署名取得に失敗した場合は既存の値を維持
-      }
+        // Windowsの場合は \、Macの場合は / でパスを区切ってファイル名を抽出
+        const fileName = savedPath.split(/[\\/]/).pop() || activeFile.name;
 
-      // 状態を更新（ハンドルを保持し、savedContentを更新）
-      setFiles((prev) =>
-        prev.map((f) =>
-          f.id === activeFile.id
-            ? {
-                ...f,
-                savedContent: f.content,
-                name: handle.name,
-                handle: handle,
-                sourceSignature: savedSourceSignature,
-                needsSaveAs: false,
-              }
-            : f
-        )
-      );
+        // 保存成功時のState更新
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === activeFile.id
+              ? {
+                  ...f,
+                  savedContent: f.content,
+                  name: fileName,
+                  handle: savedPath, // Electron版では handle にファイルパスの文字列を入れる
+                  needsSaveAs: false,
+                  // sourceSignatureは一旦据え置き
+                }
+              : f
+          )
+        );
 
-      if (fileExists) {
-        showToast(`${handle.name} ${t('status.saved') || 'に保存しました。'}`);
+        showToast(`${fileName} ${t('status.saved') || 'を保存しました。'}`);
+        setActiveMenu(null);
       } else {
-        showToast(`${t('status.fileNotFound')} ${handle.name}`);
+        // ==========================================
+        // 【Web（GitHub Pages）版の保存処理】 ※今までのコードそのまま
+        // ==========================================
+        let handle = activeFile.handle;
+        if (!handle || typeof handle === 'string') {
+          const knownHandle = knownFileHandlesRef.current[activeFile.name];
+          if (knownHandle) {
+            handle = knownHandle;
+          }
+        }
+
+        if (!handle || typeof handle === 'string') {
+          try {
+            // @ts-expect-error: File System Access API
+            handle = await window.showSaveFilePicker({
+              suggestedName: activeFile.name,
+              types: [
+                {
+                  description: 'Markdown / Text Files',
+                  accept: {
+                    'text/markdown': ['.md'],
+                    'text/plain': ['.txt'],
+                  },
+                },
+              ],
+            });
+          } catch (err: any) {
+            if (err.name === 'AbortError') return;
+            throw err;
+          }
+        }
+
+        let fileExists = true;
+        try {
+          await handle.getFile();
+        } catch {
+          fileExists = false;
+        }
+
+        const writable = await handle.createWritable();
+        await writable.write(activeFile.content);
+        await writable.close();
+
+        let savedSourceSignature = activeFile.sourceSignature;
+        try {
+          const savedFile = await handle.getFile();
+          savedSourceSignature = getFileSourceSignature(savedFile);
+        } catch {
+          // do nothing
+        }
+
+        setFiles((prev) =>
+          prev.map((f) =>
+            f.id === activeFile.id
+              ? {
+                  ...f,
+                  savedContent: f.content,
+                  name: handle.name,
+                  handle: handle,
+                  sourceSignature: savedSourceSignature,
+                  needsSaveAs: false,
+                }
+              : f
+          )
+        );
+
+        if (fileExists) {
+          showToast(`${handle.name} ${t('status.saved') || 'に保存しました。'}`);
+        } else {
+          showToast(`${t('status.fileNotFound')} ${handle.name}`);
+        }
+        rememberFileHandle(handle);
+        setActiveMenu(null);
       }
-      rememberFileHandle(handle);
-      setActiveMenu(null);
     } catch (err: any) {
       console.error(err);
       showToast(t('status.errorSaveFile') || '保存に失敗しました。');
