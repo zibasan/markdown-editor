@@ -1730,3 +1730,57 @@ select,
   font-size: 18px;
   line-height: 1;
 }
+
+/* 検索バーの中央配置の基準にするため追加 */
+.app-titlebar {
+  position: relative;
+}
+
+/* 各セクションの高さをタイトルバー一杯にする */
+.titlebar-section {
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+/* 検索バーのセクションを画面の「絶対的な中央」に固定する */
+.titlebar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* クリック可能な要素を確実に前面に出す */
+.menu-bar,
+.theme-toggle-btn,
+.command-palette-trigger,
+.menu-item {
+  position: relative;
+  z-index: 10;
+}
+
+/* テーマボタンの余白調整 */
+.theme-toggle-btn {
+  margin-right: 8px;
+}
+
+/* =========================================
+   Electron版（WCO有効時）専用のスタイル
+   ========================================= */
+
+.app-titlebar.is-electron {
+  /* タイトルバーの何もない部分はドラッグでウィンドウを動かせるようにする */
+  -webkit-app-region: drag;
+  user-select: none;
+
+  /* 右側にOSネイティブボタン用のスペース（約140px）を確保（Web版には影響させない！） */
+  padding: 0 140px 0 10px !important;
+}
+
+/* クリックしたい要素には確実に no-drag を設定し、OSからクリック判定を取り戻す */
+.app-titlebar.is-electron .menu-bar,
+.app-titlebar.is-electron .theme-toggle-btn,
+.app-titlebar.is-electron .command-palette-trigger,
+.app-titlebar.is-electron .menu-item {
+  -webkit-app-region: no-drag;
+}

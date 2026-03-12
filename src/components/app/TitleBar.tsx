@@ -59,9 +59,17 @@ export function TitleBar({
   onTitleBarContextMenu,
   logoImage,
 }: TitleBarProps) {
+  // 【追加】Electron環境（デスクトップアプリ）かどうかを判定
+  const isElectron = typeof window !== 'undefined' && window.electronAPI !== undefined;
+  // eslint-disable-next-line no-console
+  console.log('★Electron環境ですか？:', isElectron, window.electronAPI);
+
   return (
     <>
-      <header className="app-titlebar" onContextMenu={onTitleBarContextMenu}>
+      <header
+        className={`app-titlebar ${isElectron ? 'is-electron' : ''}`}
+        onContextMenu={onTitleBarContextMenu}
+      >
         <div className="titlebar-section">
           <div style={{ padding: '0 8px', display: 'flex' }}>
             <img src={logoImage} alt="App Icon" style={{ width: 16, height: 16 }} />
@@ -230,6 +238,7 @@ export function TitleBar({
           )}
         </div>
 
+        {/* 【修正】右側セクション（テーマ切り替え + ウィンドウコントロール） */}
         <div className="titlebar-section titlebar-right">
           <button
             className="theme-toggle-btn"

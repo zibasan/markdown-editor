@@ -3,5 +3,8 @@
 interface Window {
   electronAPI?: {
     saveFile: (content: string, defaultPath?: string) => Promise<string | null>;
+    minimize: () => void;
+    maximize: () => void;
+    close: () => void;
   };
 }

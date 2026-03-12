@@ -1,0 +1,57 @@
+﻿(日本語の利用規約は英語版の下にあります。)
+
+End User License Agreement (EULA)
+
+This End User License Agreement (hereinafter referred to as the "Agreement") is a legal agreement between you (hereinafter referred to as the "User") and zibasan (hereinafter referred to as the "Creator") for the software "Markdown Editor(Tentative Name)" (hereinafter referred to as the "Software"). By installing, copying, or otherwise using the Software, you agree to be bound by the terms of this Agreement.
+
+Article 1 (Grant of License)
+The Creator grants the User a non-exclusive, non-transferable, and free license to use the Software for personal and commercial purposes.
+
+Article 2 (Prohibitions)
+The User shall not engage in any of the following acts:
+1. Reverse engineer, decompile, or disassemble the Software.
+2. Modify, distribute, sell, or lease all or any part of the Software without the prior written consent of the Creator.
+3. Use the Software for any unlawful purpose or acts against public order and morals.
+
+Article 3 (Disclaimer of Warranty and Limitation of Liability) [IMPORTANT]
+1. The Software is provided "AS-IS", without warranty of any kind, express or implied. The Creator makes no guarantees regarding the operation of the Software, the absence of bugs, or its fitness for a particular purpose.
+2. In no event shall the Creator be liable for any direct, indirect, or incidental damages (including, but not limited to, loss of created data, business interruption, or loss of profits) arising out of the use or inability to use the Software. The User is solely responsible for maintaining regular backups of their own data.
+
+Article 4 (Intellectual Property Rights)
+All copyrights and other intellectual property rights related to the Software are the property of the Creator or rightful third parties. This license does not constitute a transfer of any intellectual property rights to the User.
+
+Article 5 (Modifications to the Agreement)
+The Creator reserves the right to modify this Agreement at any time without prior notice to the User. The amended Agreement will become effective upon the release of a Software update or when announced on the Creator's website or other related platforms.
+
+Date of Enactment: March 11, 2026
+Creator: zibasan
+Contact: TO BE DECIDED...
+
+====================================
+
+ソフトウェア利用規約
+
+この利用規約（以下、「本規約」）は、zibasan（以下、「制作者」）が提供するソフトウェア「Markdown Editor(仮称)」（以下、「本ソフトウェア」）の利用条件を定めるものです。本ソフトウェアをインストール、複製、または利用することをもって、ユーザーは本規約に同意したものとみなされます。
+
+第1条（利用許諾）
+制作者は、ユーザーに対し、本ソフトウェアを個人利用および業務利用の目的で、非独占的かつ譲渡不能な使用権を無償にて許諾します。
+
+第2条（禁止事項）
+ユーザーは、本ソフトウェアの利用にあたり、以下の行為を行ってはなりません。
+1. 本ソフトウェアのプログラムをリバースエンジニアリング、逆コンパイル、または逆アセンブルすること。
+2. 本ソフトウェアの全部または一部を、制作者の許可なく改変、二次配布、販売、または貸与すること。
+3. 法令または公序良俗に違反する行為。
+
+第3条（免責事項）【重要】
+1. 本ソフトウェアは「現状有姿（As-Is）」で提供されるものであり、制作者は、本ソフトウェアの動作保証、バグがないこと、特定の目的への適合性について、明示的にも黙示的にも一切の保証を行いません。
+2. 本ソフトウェアを使用したこと、または使用できなかったことに起因してユーザーに生じた直接的、間接的、偶発的な損害（作成したデータの消失、業務の中断、利益の喪失を含みますがこれらに限定されません）について、制作者は一切の責任を負わないものとします。こまめなデータのバックアップはユーザー自身の責任で行うものとします。
+
+第4条（著作権および知的財産権）
+本ソフトウェアに関する著作権その他の知的財産権は、すべて制作者または正当な権利を有する第三者に帰属します。本規約による利用許諾は、これらの権利の移転を意味するものではありません。
+
+第5条（規約の変更）
+制作者は、必要と判断した場合には、ユーザーに事前に通知することなく本規約を変更することができるものとします。変更後の利用規約は、本ソフトウェアのアップデート時または制作者が提供するウェブサイト等で告知された時点から効力を生じるものとします。
+
+制定日：2026年3月11日
+制作者：zibasan
+連絡先：＜未定＞

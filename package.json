@@ -2,6 +2,7 @@
   "name": "markdown-code-editor",
   "private": true,
   "version": "1.0.0",
+  "author": "zibasan",
   "main": "dist-electron/main.js",
   "type": "module",
   "scripts": {
@@ -70,19 +71,36 @@
   },
   "build": {
     "appId": "com.zibasan.markdowneditor",
-    "productName": "MarkdownEditor",
+    "productName": "Markdown Editor",
+    "copyright": "Copyright © 2026 zibasan",
     "directories": {
       "output": "release/"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Markdown Editor",
+      "displayLanguageSelector": true,
+      "multiLanguageInstaller": true,
+      "license": "build/license.txt",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
     },
     "files": [
       "dist/**/*",
       "dist-electron/**/*"
     ],
     "mac": {
-      "target": "dmg"
+      "target": "dmg",
+      "icon": "build/icon.icns"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     }
   }
 }

@@ -19,9 +19,16 @@ function createWindow() {
   win = new BrowserWindow({
     width: 1200,
     height: 800,
-    icon: path.join(process.env.VITE_PUBLIC!, 'electron-vite.svg'),
+    icon: path.join(process.env.VITE_PUBLIC!, 'icon.png'),
+    // 【追加】タイトルバーを隠し、ネイティブボタンだけを残す
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: '#181818', // ボタンの背景色（.app-titlebarの背景色に合わせる）
+      symbolColor: '#cccccc', // アイコン（横棒やバツ）の色
+      height: 30, // 高さ（CSSのタイトルバーの高さに合わせる）
+    },
     webPreferences: {
-      preload: path.join(__dirname, 'preload.ts'),
+      preload: path.join(__dirname, 'preload.js'),
       // セキュリティ設定（後々ローカルファイルを触る際に重要になります）
       nodeIntegration: false,
       contextIsolation: true,
@@ -68,6 +75,26 @@ app.whenReady().then(() => {
 
     // 保存したファイルのパスをReact側に返す
     return filePath;
+  });
+
+  // 【追加】ウィンドウ操作の処理
+  ipcMain.on('window:minimize', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    window?.minimize();
+  });
+
+  ipcMain.on('window:maximize', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    if (window?.isMaximized()) {
+      window.unmaximize(); // すでに最大化されていれば元に戻す
+    } else {
+      window?.maximize();
+    }
+  });
+
+  ipcMain.on('window:close', (event) => {
+    const window = BrowserWindow.fromWebContents(event.sender);
+    window?.close();
   });
 
   createWindow();
