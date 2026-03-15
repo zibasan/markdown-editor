@@ -6,6 +6,7 @@ import { remarkAlert } from 'remark-github-blockquote-alert';
 import type { EditorFile, OutlineItem } from '../../types';
 
 type SidebarTab = 'explorer' | 'outline' | 'docs';
+type RecentFileEntry = { path: string; name: string };
 
 const renderFileTypeIcon = (filename: string, size = 14) => {
   const ext = filename.split('.').pop()?.toLowerCase();
@@ -34,6 +35,11 @@ interface SidebarPanelProps {
   setHamburgerSubMenu: (value: string | null) => void;
   openNewFilePalette: () => void;
   openFileFromDisk: () => void;
+  openFolderFromDisk: () => void;
+  createFolderFromDisk: () => void;
+  openRecentFile: (filePath: string) => void;
+  recentFiles: RecentFileEntry[];
+  isElectron: boolean;
   hasActiveFile: boolean;
   handleSave: () => void;
   triggerUndo: () => void;
@@ -44,12 +50,16 @@ interface SidebarPanelProps {
   setShowLangSwitchPalette: (show: boolean) => void;
   setIsSettingsOpen: (show: boolean) => void;
   setShowSettingsTab: (show: boolean) => void;
+  registerFileAssociation: () => void;
+  unregisterFileAssociation: () => void;
+  showAboutDialog: () => void;
   activeSidebarTab: SidebarTab;
   isSidebarOpen: boolean;
   setIsSidebarOpen: (show: boolean) => void;
   setActiveSidebarTab: (tab: SidebarTab) => void;
   setSidebarWidth: (value: number | ((prev: number) => number)) => void;
   sidebarWidth: number;
+  openedFolderPath: string | null;
   files: EditorFile[];
   activeFileId: string;
   activateFile: (id: string) => void;
@@ -71,6 +81,11 @@ export function SidebarPanel({
   setHamburgerSubMenu,
   openNewFilePalette,
   openFileFromDisk,
+  openFolderFromDisk,
+  createFolderFromDisk,
+  openRecentFile,
+  recentFiles,
+  isElectron,
   hasActiveFile,
   handleSave,
   triggerUndo,
@@ -81,12 +96,16 @@ export function SidebarPanel({
   setShowLangSwitchPalette,
   setIsSettingsOpen,
   setShowSettingsTab,
+  registerFileAssociation,
+  unregisterFileAssociation,
+  showAboutDialog,
   activeSidebarTab,
   isSidebarOpen,
   setIsSidebarOpen,
   setActiveSidebarTab,
   setSidebarWidth,
   sidebarWidth,
+  openedFolderPath,
   files,
   activeFileId,
   activateFile,
@@ -160,6 +179,17 @@ export function SidebarPanel({
                         Ctrl+O
                       </span>
                     </div>
+                    {isElectron && (
+                      <div
+                        className="context-menu-item"
+                        onClick={() => {
+                          openFolderFromDisk();
+                          setHamburgerMenu(null);
+                        }}
+                      >
+                        <span>{t('menu.file.openFolder')}</span>
+                      </div>
+                    )}
                     <div className="context-menu-separator" />
                     <div
                       className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
@@ -177,6 +207,41 @@ export function SidebarPanel({
                         Ctrl+S
                       </span>
                     </div>
+                    {isElectron && (
+                      <>
+                        <div className="context-menu-separator" />
+                        <div className="context-menu-item has-submenu">
+                          <span>{t('menu.file.recent')}</span>
+                          <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
+                            ▶
+                          </span>
+                          <div className="context-menu-submenu">
+                            {recentFiles.length === 0 ? (
+                              <div className="context-menu-item disabled">
+                                <span>{t('menu.file.recent.empty')}</span>
+                              </div>
+                            ) : (
+                              recentFiles.map((entry) => (
+                                <div
+                                  key={entry.path}
+                                  className="context-menu-item recent-file-item"
+                                  onClick={() => {
+                                    openRecentFile(entry.path);
+                                    setHamburgerMenu(null);
+                                  }}
+                                  title={entry.path}
+                                >
+                                  <div className="recent-file-label">
+                                    <span className="recent-file-name">{entry.name}</span>
+                                    <span className="recent-file-path">{entry.path}</span>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
 
@@ -286,6 +351,56 @@ export function SidebarPanel({
                       </span>
                     </div>
                   </div>
+                )}
+
+                {isElectron && (
+                  <>
+                    <div
+                      className={`context-menu-item has-submenu ${hamburgerSubMenu === 'help' ? 'active' : ''}`}
+                      onMouseEnter={() => setHamburgerSubMenu('help')}
+                      onClick={() =>
+                        setHamburgerSubMenu(hamburgerSubMenu === 'help' ? null : 'help')
+                      }
+                    >
+                      <span>{t('menu.help')}</span>
+                    </div>
+                    {hamburgerSubMenu === 'help' && (
+                      <div className="hamburger-sub-menu" style={{ top: '90px' }}>
+                        <div
+                          className="context-menu-item"
+                          onClick={() => {
+                            showAboutDialog();
+                            setHamburgerMenu(null);
+                          }}
+                        >
+                          <span>{t('menu.help.about')}</span>
+                        </div>
+                        <div className="context-menu-item has-submenu">
+                          <span>{t('menu.help.association')}</span>
+                          <div className="context-menu-submenu">
+                            <div
+                              className="context-menu-item"
+                              onClick={() => {
+                                registerFileAssociation();
+                                setHamburgerMenu(null);
+                              }}
+                            >
+                              <span>{t('menu.help.association.register')}</span>
+                            </div>
+                            <div
+                              className="context-menu-item"
+                              onClick={() => {
+                                unregisterFileAssociation();
+                                setHamburgerMenu(null);
+                              }}
+                            >
+                              <span>{t('menu.help.association.unregister')}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
@@ -424,50 +539,69 @@ export function SidebarPanel({
           }}
         >
           {activeSidebarTab === 'explorer' ? (
-            <ul className="explorer-list">
-              {files.map((file) => (
-                <li
-                  key={file.id}
-                  className={`explorer-item ${activeFileId === file.id ? 'active' : ''}`}
-                  onClick={() => activateFile(file.id)}
-                  onContextMenu={(e) => handleContextMenu(e, file.id)}
-                >
-                  {renderFileTypeIcon(file.name)}
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '6px',
-                      flex: 1,
-                      minWidth: 0,
-                    }}
+            files.length === 0 && !openedFolderPath ? (
+              <div className="explorer-empty">
+                <div className="explorer-empty-title">{t('sidebar.empty')}</div>
+                <div className="explorer-empty-actions">
+                  <button className="explorer-empty-btn" onClick={openNewFilePalette}>
+                    {t('sidebar.empty.createFile')}
+                  </button>
+                  <button className="explorer-empty-btn" onClick={openFileFromDisk}>
+                    {t('sidebar.empty.openFile')}
+                  </button>
+                  {isElectron && (
+                    <button className="explorer-empty-btn" onClick={createFolderFromDisk}>
+                      {t('sidebar.empty.createFolder')}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <ul className="explorer-list">
+                {files.map((file) => (
+                  <li
+                    key={file.id}
+                    className={`explorer-item ${activeFileId === file.id ? 'active' : ''}`}
+                    onClick={() => activateFile(file.id)}
+                    onContextMenu={(e) => handleContextMenu(e, file.id)}
                   >
-                    <span
+                    {renderFileTypeIcon(file.name)}
+                    <div
                       style={{
-                        fontSize: '13px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
                         flex: 1,
+                        minWidth: 0,
                       }}
                     >
-                      {file.name}
-                    </span>
-                    {getIsDirty(file) && <span className="dirty-marker">*</span>}
-                  </div>
-                  <button
-                    className="explorer-close-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      closeFile(e, file.id);
-                    }}
-                    data-tooltip={t('sidebar.close')}
-                  >
-                    <X size={14} />
-                  </button>
-                </li>
-              ))}
-            </ul>
+                      <span
+                        style={{
+                          fontSize: '13px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          flex: 1,
+                        }}
+                      >
+                        {file.name}
+                      </span>
+                      {getIsDirty(file) && <span className="dirty-marker">*</span>}
+                    </div>
+                    <button
+                      className="explorer-close-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        closeFile(e, file.id);
+                      }}
+                      data-tooltip={t('sidebar.close')}
+                    >
+                      <X size={14} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )
           ) : activeSidebarTab === 'outline' ? (
             <div className="outline-list" style={{ padding: '8px 0' }}>
               {outlineItems.length > 0 ? (

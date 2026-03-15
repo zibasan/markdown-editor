@@ -25,6 +25,10 @@ import { FILE_SESSION_STORAGE_KEY, readPersistedEditorState } from './utils/edit
 
 type Theme = 'system' | 'light' | 'dark';
 type SidebarTab = 'explorer' | 'outline' | 'docs';
+type RecentFileEntry = { path: string; name: string };
+
+const RECENT_FILES_STORAGE_KEY = 'editor_recent_files';
+const MAX_RECENT_FILES = 10;
 
 // Monaco Editor の言語パック初期設定（動的に変更するには再読み込みが必要）
 function configureMonacoLocale(lang: 'ja' | 'en') {
@@ -63,12 +67,30 @@ function App() {
   const [historyStateByFile, setHistoryStateByFile] = useState<
     Record<string, { canUndo: boolean; canRedo: boolean }>
   >({});
+  const isElectron = typeof window !== 'undefined' && window.electronAPI !== undefined;
 
   const [files, setFiles] = useState<EditorFile[]>(() => readPersistedEditorState().files);
   const filesRef = useRef<EditorFile[]>([]);
   const [activeFileId, setActiveFileId] = useState<string>(
     () => readPersistedEditorState().activeFileId
   );
+  const [recentFiles, setRecentFiles] = useState<RecentFileEntry[]>(() => {
+    if (!isElectron) return [];
+    try {
+      const raw = localStorage.getItem(RECENT_FILES_STORAGE_KEY);
+      if (!raw) return [];
+      const parsed = JSON.parse(raw) as Partial<RecentFileEntry>[];
+      if (!Array.isArray(parsed)) return [];
+
+      return parsed.filter(
+        (entry): entry is RecentFileEntry =>
+          typeof entry?.path === 'string' && typeof entry?.name === 'string'
+      );
+    } catch {
+      return [];
+    }
+  });
+  const [openedFolderPath, setOpenedFolderPath] = useState<string | null>(null);
   const [activeSidebarTab, setActiveSidebarTab] = useState<SidebarTab>('explorer');
   // サイドバーの開閉状態 (画面が狭い場合は初期で閉じておく)
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => window.innerWidth > 768);
@@ -127,6 +149,11 @@ function App() {
   // v35: 言語切り替えパレット用の State
   const [showLangSwitchPalette, setShowLangSwitchPalette] = useState(false);
   const [showPreview, setShowPreview] = useState<boolean>(false);
+  const [showRecentPalette, setShowRecentPalette] = useState(false);
+  const [recentSearch, setRecentSearch] = useState('');
+  const recentInputRef = useRef<HTMLInputElement>(null);
+  const [languagePaletteIndex, setLanguagePaletteIndex] = useState(0);
+  const [recentPaletteIndex, setRecentPaletteIndex] = useState(0);
 
   // === effectiveMenuBarMode: 画面幅が狭い時は自動で compact に切り替え ===
   const effectiveMenuBarMode = useMemo(() => {
@@ -208,6 +235,11 @@ function App() {
     localStorage.setItem(FILE_SESSION_STORAGE_KEY, JSON.stringify(state));
   }, [activeFileId, files]);
 
+  useEffect(() => {
+    if (!isElectron) return;
+    localStorage.setItem(RECENT_FILES_STORAGE_KEY, JSON.stringify(recentFiles));
+  }, [isElectron, recentFiles]);
+
   // コンテキストメニュー用のState (fileIdがない場合は余白右クリック)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; fileId?: string } | null>(
     null
@@ -230,9 +262,8 @@ function App() {
   const [newFileNameInput, setNewFileNameInput] = useState('');
   const newFileInputRef = useRef<HTMLInputElement>(null);
 
-  // v11: D&Dステータスやトースト
+  // v11: D&Dステータス
   const [isDraggingOver, setIsDraggingOver] = useState(false);
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // v17: ショートカット（リーダーキー）および保存確認パレット用
   const [isChordWaiting, setIsChordWaiting] = useState(false);
@@ -281,11 +312,53 @@ function App() {
   };
 
   // === 主要な操作関数 (ホイスティング対策で上部に配置) ===
+  const notifyUser = React.useCallback(
+    async (title: string, body?: string) => {
+      if (isElectron && window.electronAPI?.notify) {
+        window.electronAPI.notify(title, body);
 
-  const showToast = React.useCallback((msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 4000);
-  }, []);
+        return;
+      }
+
+      if (typeof Notification === 'undefined') {
+        alert(title);
+
+        return;
+      }
+
+      if (Notification.permission === 'granted') {
+        new Notification(title, body ? { body } : undefined);
+
+        return;
+      }
+
+      if (Notification.permission !== 'denied') {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          new Notification(title, body ? { body } : undefined);
+
+          return;
+        }
+      }
+
+      alert(title);
+    },
+    [isElectron]
+  );
+
+  const addRecentFile = React.useCallback(
+    (filePath: string, name?: string) => {
+      if (!isElectron || !filePath) return;
+      const displayName = name || filePath.split(/[\\/]/).pop() || filePath;
+      setRecentFiles((prev) => {
+        const filtered = prev.filter((entry) => entry.path !== filePath);
+        const next = [{ path: filePath, name: displayName }, ...filtered];
+
+        return next.slice(0, MAX_RECENT_FILES);
+      });
+    },
+    [isElectron]
+  );
   const rememberFileHandle = React.useCallback((handle: any) => {
     if (handle?.name) {
       knownFileHandlesRef.current[handle.name] = handle;
@@ -357,6 +430,16 @@ function App() {
     return null;
   }, []);
 
+  const findOpenFileByPath = React.useCallback((filePath: string) => {
+    if (!filePath) return null;
+
+    return (
+      filesRef.current.find(
+        (openFile) => typeof openFile.handle === 'string' && openFile.handle === filePath
+      ) || null
+    );
+  }, []);
+
   const findOpenFileByLegacyContent = React.useCallback((name: string, content: string) => {
     return (
       filesRef.current.find(
@@ -369,8 +452,118 @@ function App() {
     );
   }, []);
 
+  const openFileFromPayload = React.useCallback(
+    (payload: { path: string; name: string; content: string }) => {
+      const samePathFile = findOpenFileByPath(payload.path);
+      if (samePathFile) {
+        activateFile(samePathFile.id);
+        setActiveMenu(null);
+
+        return;
+      }
+      const legacyMatchedFile = findOpenFileByLegacyContent(payload.name, payload.content);
+      if (legacyMatchedFile) {
+        activateFile(legacyMatchedFile.id);
+        setActiveMenu(null);
+
+        return;
+      }
+      const newFileId = Date.now().toString();
+      const newFile: EditorFile = {
+        id: newFileId,
+        name: payload.name,
+        content: payload.content,
+        savedContent: payload.content,
+        language: getLanguageFromFilename(payload.name),
+        handle: payload.path,
+      };
+      setFiles((prev) => [...prev, newFile]);
+      activateFile(newFileId);
+      setActiveMenu(null);
+      addRecentFile(payload.path, payload.name);
+    },
+    [activateFile, addRecentFile, findOpenFileByLegacyContent, findOpenFileByPath]
+  );
+
+  const openFilesFromPayloads = React.useCallback(
+    (payloads: Array<{ path: string; name: string; content: string }>) => {
+      if (payloads.length === 0) return;
+      const timeBase = Date.now();
+      let sequence = 0;
+      let lastNewId = '';
+      let firstExistingId = '';
+      setFiles((prev) => {
+        const next = [...prev];
+        payloads.forEach((payload) => {
+          const samePathFile = next.find(
+            (openFile) => typeof openFile.handle === 'string' && openFile.handle === payload.path
+          );
+          if (samePathFile) {
+            if (!firstExistingId) firstExistingId = samePathFile.id;
+            return;
+          }
+          const legacyMatchedFile = next.find(
+            (openFile) =>
+              openFile.name === payload.name &&
+              openFile.savedContent === payload.content &&
+              !openFile.handle &&
+              !openFile.sourceSignature
+          );
+          if (legacyMatchedFile) {
+            if (!firstExistingId) firstExistingId = legacyMatchedFile.id;
+            return;
+          }
+          const newFileId = `${timeBase}-${sequence++}`;
+          const newFile: EditorFile = {
+            id: newFileId,
+            name: payload.name,
+            content: payload.content,
+            savedContent: payload.content,
+            language: getLanguageFromFilename(payload.name),
+            handle: payload.path,
+          };
+          next.push(newFile);
+          lastNewId = newFileId;
+          addRecentFile(payload.path, payload.name);
+        });
+        return next;
+      });
+      const targetId = lastNewId || firstExistingId;
+      if (targetId) {
+        activateFile(targetId);
+      }
+      setActiveMenu(null);
+    },
+    [activateFile, addRecentFile]
+  );
+
+  const openFileFromPath = React.useCallback(
+    async (filePath: string) => {
+      if (!isElectron || !window.electronAPI?.openFilePath) return;
+      try {
+        const payload = await window.electronAPI.openFilePath(filePath);
+        if (!payload) {
+          await notifyUser(t('status.openRecentFail') || '最近使ったファイルを開けませんでした。');
+
+          return;
+        }
+        openFileFromPayload(payload);
+      } catch {
+        await notifyUser(t('status.openRecentFail') || '最近使ったファイルを開けませんでした。');
+      }
+    },
+    [isElectron, notifyUser, openFileFromPayload, t]
+  );
+
   const openFileFromDisk = React.useCallback(async () => {
     try {
+      if (isElectron && window.electronAPI?.openFileDialog) {
+        const payload = await window.electronAPI.openFileDialog();
+        if (!payload) return;
+        openFileFromPayload(payload);
+
+        return;
+      }
       // @ts-expect-error: File System Access API
       const [handle] = await window.showOpenFilePicker({
         types: [
@@ -429,7 +622,7 @@ function App() {
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         console.error(err);
-        showToast(t('status.errorOpenFile') || 'ファイルの読み込みに失敗しました。');
+        notifyUser(t('status.errorOpenFile') || 'ファイルの読み込みに失敗しました。');
       }
     }
   }, [
@@ -437,10 +630,72 @@ function App() {
     findOpenFileByHandle,
     findOpenFileByLegacyContent,
     findOpenFileBySignature,
-    showToast,
+    isElectron,
+    notifyUser,
+    openFileFromPayload,
     rememberFileHandle,
     t,
   ]);
+
+  const openFolderFromDisk = React.useCallback(
+    async (mode: 'open' | 'create' = 'open') => {
+      if (!isElectron || !window.electronAPI?.openFolderDialog) return;
+      try {
+        const payload = await window.electronAPI.openFolderDialog(mode);
+        if (!payload) return;
+        setOpenedFolderPath(payload.folderPath);
+        if (payload.files.length > 0) {
+          openFilesFromPayloads(payload.files);
+        }
+      } catch (err) {
+        console.error(err);
+        notifyUser(t('status.errorOpenFile') || 'ファイルの読み込みに失敗しました。');
+      }
+    },
+    [isElectron, notifyUser, openFilesFromPayloads, t]
+  );
+
+  const createFolderFromDisk = React.useCallback(() => {
+    void openFolderFromDisk('create');
+  }, [openFolderFromDisk]);
+
+  const openRecentFile = React.useCallback(
+    (filePath: string) => {
+      openFileFromPath(filePath);
+    },
+    [openFileFromPath]
+  );
+
+  const registerFileAssociation = React.useCallback(async () => {
+    if (!isElectron || !window.electronAPI?.registerFileAssociation) return;
+    const success = await window.electronAPI.registerFileAssociation();
+    await notifyUser(
+      success
+        ? t('status.registerAssociationSuccess') || '関連付けを登録しました。'
+        : t('status.registerAssociationFail') || '関連付けの登録に失敗しました。'
+    );
+  }, [isElectron, notifyUser, t]);
+
+  const unregisterFileAssociation = React.useCallback(async () => {
+    if (!isElectron || !window.electronAPI?.unregisterFileAssociation) return;
+    const success = await window.electronAPI.unregisterFileAssociation();
+    await notifyUser(
+      success
+        ? t('status.unregisterAssociationSuccess') || '関連付けを解除しました。'
+        : t('status.unregisterAssociationFail') || '関連付けの解除に失敗しました。'
+    );
+  }, [isElectron, notifyUser, t]);
+
+  useEffect(() => {
+    if (!isElectron || !window.electronAPI?.onOpenFile) return;
+    const unsubscribe = window.electronAPI.onOpenFile((filePath) => {
+      openFileFromPath(filePath);
+    });
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [isElectron, openFileFromPath]);
 
   const openNewFilePalette = () => {
     setNewFileNameInput('');
@@ -497,7 +752,8 @@ function App() {
           )
         );
 
-        showToast(`${fileName} ${t('status.saved') || 'を保存しました。'}`);
+        addRecentFile(savedPath, fileName);
+        notifyUser(`${fileName} ${t('status.saved') || 'を保存しました。'}`);
         setActiveMenu(null);
       } else {
         // ==========================================
@@ -567,18 +823,18 @@ function App() {
         );
 
         if (fileExists) {
-          showToast(`${handle.name} ${t('status.saved') || 'に保存しました。'}`);
+          notifyUser(`${handle.name} ${t('status.saved') || 'に保存しました。'}`);
         } else {
-          showToast(`${t('status.fileNotFound')} ${handle.name}`);
+          notifyUser(`${t('status.fileNotFound')} ${handle.name}`);
         }
         rememberFileHandle(handle);
         setActiveMenu(null);
       }
     } catch (err: any) {
       console.error(err);
-      showToast(t('status.errorSaveFile') || '保存に失敗しました。');
+      notifyUser(t('status.errorSaveFile') || '保存に失敗しました。');
     }
-  }, [activeFile, rememberFileHandle, showToast, t]);
+  }, [activeFile, addRecentFile, notifyUser, rememberFileHandle, t]);
 
   // handleSaveRef を更新（Monaco Editor の addAction が常に最新の handleSave を参照するため）
   useEffect(() => {
@@ -606,7 +862,7 @@ function App() {
     if (hasExtension) {
       const ext = fileName.split('.').pop()?.toLowerCase();
       if (ext !== 'md' && ext !== 'txt') {
-        showToast('エラー: .md または .txt 拡張子のみサポートされています。');
+        notifyUser('エラー: .md または .txt 拡張子のみサポートされています。');
 
         return;
       }
@@ -651,14 +907,14 @@ function App() {
       };
       setFiles((prev) => [...prev, newFile]);
       activateFile(newFileId);
-      showToast(`${handle.name} ${t('status.created') || 'を作成しました。'}`);
+      notifyUser(`${handle.name} ${t('status.created') || 'を作成しました。'}`);
       if (editorRef.current) {
         editorRef.current.focus();
       }
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         console.error(err);
-        showToast(t('status.errorSaveFile') || 'ファイルの作成に失敗しました。');
+        notifyUser(t('status.errorSaveFile') || 'ファイルの作成に失敗しました。');
       }
     }
   };
@@ -1171,6 +1427,28 @@ function App() {
       },
     });
 
+    // カスタムコマンド: フォルダを開く (Electronのみ)
+    editorInstance.addAction({
+      id: 'open-folder-action',
+      label: t('cmdPalette.customOpt.openFolder'),
+      run: function () {
+        if (isElectron) {
+          openFolderFromDisk();
+        }
+      },
+    });
+
+    // カスタムコマンド: 最近使ったファイルを開く
+    editorInstance.addAction({
+      id: 'open-recent-file-action',
+      label: t('cmdPalette.customOpt.openRecent'),
+      run: function () {
+        if (isElectron) {
+          setShowRecentPalette(true);
+        }
+      },
+    });
+
     // カスタムコマンド: すべてのファイルを閉じる (初期画面に戻る)
     editorInstance.addAction({
       id: 'close-all-files-action',
@@ -1181,6 +1459,7 @@ function App() {
         setActiveFileId('');
         setHistoryStateByFile({});
         setIsSettingsOpen(false);
+        setOpenedFolderPath(null);
       },
     });
 
@@ -1200,7 +1479,7 @@ function App() {
     if (!fileList || fileList.length === 0) return;
     const file = fileList[0];
     if (!isSupportedFile(file)) {
-      showToast('エラー: Markdown(.md)またはテキスト(.txt)ファイルのみサポートされています。');
+      notifyUser('エラー: Markdown(.md)またはテキスト(.txt)ファイルのみサポートされています。');
       e.target.value = ''; // Reset
 
       return;
@@ -1267,7 +1546,7 @@ function App() {
       const file = await handle.getFile();
       rememberFileHandle(handle);
       if (!isSupportedFile(file)) {
-        showToast('エラー: Markdown(.md)またはテキスト(.txt)ファイルのみサポートされています。');
+        notifyUser('エラー: Markdown(.md)またはテキスト(.txt)ファイルのみサポートされています。');
 
         return;
       }
@@ -1401,16 +1680,16 @@ function App() {
             await writable.close();
 
             if (closeFileExists) {
-              showToast(`${fileToClose.name} ${t('status.saved')}`);
+              notifyUser(`${fileToClose.name} ${t('status.saved')}`);
             } else {
-              showToast(`${t('status.fileNotFound')} ${handle.name}`);
+              notifyUser(`${t('status.fileNotFound')} ${handle.name}`);
             }
           } else {
             handleExport(fileToClose.content);
           }
         } catch (err) {
           console.error(err);
-          showToast(t('status.errorSaveFile') || '保存に失敗しました。');
+          notifyUser(t('status.errorSaveFile') || '保存に失敗しました。');
         }
         executeClose(id);
         setShowConfirmPalette(null);
@@ -1554,6 +1833,17 @@ function App() {
     );
   }, [availableLanguages, languageSearch]);
 
+  const filteredRecentFiles = useMemo(() => {
+    if (!recentSearch.trim()) return recentFiles;
+    const lowerSearch = recentSearch.toLowerCase();
+
+    return recentFiles.filter(
+      (entry) =>
+        entry.name.toLowerCase().includes(lowerSearch) ||
+        entry.path.toLowerCase().includes(lowerSearch)
+    );
+  }, [recentFiles, recentSearch]);
+
   const selectLanguage = (langId: string) => {
     if (activeFileId) {
       setFiles((prev) =>
@@ -1598,18 +1888,92 @@ function App() {
     }
   }, [showLanguagePalette]);
 
+  useEffect(() => {
+    if (showRecentPalette && recentInputRef.current) {
+      setTimeout(() => recentInputRef.current?.focus(), 50);
+    }
+  }, [showRecentPalette]);
+
+  useEffect(() => {
+    if (!showLanguagePalette) return;
+    if (filteredLanguages.length === 0) {
+      setLanguagePaletteIndex(0);
+      return;
+    }
+    const activeIndex = filteredLanguages.findIndex((lang) => lang.id === activeFile?.language);
+    if (activeIndex >= 0) {
+      setLanguagePaletteIndex(activeIndex);
+    } else {
+      setLanguagePaletteIndex(0);
+    }
+  }, [activeFile?.language, filteredLanguages, showLanguagePalette]);
+
+  useEffect(() => {
+    if (!showRecentPalette) return;
+    if (filteredRecentFiles.length === 0) {
+      setRecentPaletteIndex(0);
+      return;
+    }
+    setRecentPaletteIndex(0);
+  }, [filteredRecentFiles, showRecentPalette]);
+
   // keydown イベントで Escape / Enter / Arrow 処理
   const handleLanguagePaletteKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
       setShowLanguagePalette(false);
       setLanguageSearch('');
       editorRef.current?.focus();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (filteredLanguages.length === 0) return;
+      setLanguagePaletteIndex((prev) =>
+        Math.min(prev + 1, Math.max(filteredLanguages.length - 1, 0))
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (filteredLanguages.length === 0) return;
+      setLanguagePaletteIndex((prev) => Math.max(prev - 1, 0));
     } else if (e.key === 'Enter') {
       if (filteredLanguages.length > 0) {
-        selectLanguage(filteredLanguages[0].id);
+        const target = filteredLanguages[languagePaletteIndex] || filteredLanguages[0];
+        selectLanguage(target.id);
       }
     }
   };
+
+  const handleRecentPaletteKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setShowRecentPalette(false);
+      setRecentSearch('');
+      editorRef.current?.focus();
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (filteredRecentFiles.length === 0) return;
+      setRecentPaletteIndex((prev) =>
+        Math.min(prev + 1, Math.max(filteredRecentFiles.length - 1, 0))
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (filteredRecentFiles.length === 0) return;
+      setRecentPaletteIndex((prev) => Math.max(prev - 1, 0));
+    } else if (e.key === 'Enter') {
+      if (filteredRecentFiles.length > 0) {
+        const target = filteredRecentFiles[recentPaletteIndex] || filteredRecentFiles[0];
+        openRecentFile(target.path);
+        setShowRecentPalette(false);
+        setRecentSearch('');
+      }
+    }
+  };
+
+  const showAboutDialog = React.useCallback(async () => {
+    if (isElectron && window.electronAPI?.showAbout) {
+      await window.electronAPI.showAbout();
+
+      return;
+    }
+    alert('Markdown Editor');
+  }, [isElectron]);
 
   const toggleTheme = () => {
     if (theme === 'system') setTheme('light');
@@ -1677,6 +2041,9 @@ function App() {
         setActiveMenu={setActiveMenu}
         openNewFilePalette={openNewFilePalette}
         openFileFromDisk={openFileFromDisk}
+        openFolderFromDisk={openFolderFromDisk}
+        openRecentFile={openRecentFile}
+        recentFiles={recentFiles}
         hasActiveFile={hasActiveFile}
         handleSave={handleSave}
         triggerUndo={triggerUndo}
@@ -1686,11 +2053,15 @@ function App() {
         setShowPreview={setShowPreview}
         setShowLangSwitchPalette={setShowLangSwitchPalette}
         setIsSettingsOpen={setIsSettingsOpen}
+        registerFileAssociation={registerFileAssociation}
+        unregisterFileAssociation={unregisterFileAssociation}
+        showAboutDialog={showAboutDialog}
         settings={settings}
         setSettings={applySettings}
         theme={theme}
         toggleTheme={toggleTheme}
         activeFileName={activeFile?.name || 'Markdown Editor'}
+        isElectron={isElectron}
         titleBarContextMenu={titleBarContextMenu}
         setTitleBarContextMenu={setTitleBarContextMenu}
         onTitleBarContextMenu={(e) => {
@@ -1722,6 +2093,18 @@ function App() {
         setShowLangSwitchPalette={setShowLangSwitchPalette}
         settingsLanguage={settings.language}
         setSettingsLanguage={setSettingsLanguage}
+        showRecentPalette={showRecentPalette}
+        setShowRecentPalette={setShowRecentPalette}
+        recentSearch={recentSearch}
+        setRecentSearch={setRecentSearch}
+        recentInputRef={recentInputRef}
+        filteredRecentFiles={filteredRecentFiles}
+        openRecentFile={openRecentFile}
+        handleRecentPaletteKeyDown={handleRecentPaletteKeyDown}
+        activeLanguageIndex={languagePaletteIndex}
+        setActiveLanguageIndex={setLanguagePaletteIndex}
+        activeRecentIndex={recentPaletteIndex}
+        setActiveRecentIndex={setRecentPaletteIndex}
       />
 
       <main
@@ -1741,6 +2124,11 @@ function App() {
           setHamburgerSubMenu={setHamburgerSubMenu}
           openNewFilePalette={openNewFilePalette}
           openFileFromDisk={openFileFromDisk}
+          openFolderFromDisk={openFolderFromDisk}
+          createFolderFromDisk={createFolderFromDisk}
+          openRecentFile={openRecentFile}
+          recentFiles={recentFiles}
+          isElectron={isElectron}
           hasActiveFile={hasActiveFile}
           handleSave={handleSave}
           triggerUndo={triggerUndo}
@@ -1751,12 +2139,16 @@ function App() {
           setShowLangSwitchPalette={setShowLangSwitchPalette}
           setIsSettingsOpen={setIsSettingsOpen}
           setShowSettingsTab={setShowSettingsTab}
+          registerFileAssociation={registerFileAssociation}
+          unregisterFileAssociation={unregisterFileAssociation}
+          showAboutDialog={showAboutDialog}
           activeSidebarTab={activeSidebarTab}
           isSidebarOpen={isSidebarOpen}
           setIsSidebarOpen={setIsSidebarOpen}
           setActiveSidebarTab={setActiveSidebarTab}
           setSidebarWidth={setSidebarWidth}
           sidebarWidth={sidebarWidth}
+          openedFolderPath={openedFolderPath}
           files={files}
           activeFileId={activeFileId}
           activateFile={activateFile}
@@ -1816,7 +2208,6 @@ function App() {
           openFileFromDisk={openFileFromDisk}
           fileInputRef={fileInputRef}
           handleFileOpen={handleFileOpen}
-          toastMsg={toastMsg}
         />
       </main>
 

@@ -13,6 +13,11 @@ interface ConfirmPalette {
   onCancel: () => void;
 }
 
+interface RecentFileEntry {
+  path: string;
+  name: string;
+}
+
 interface QuickPickLayerProps {
   t: (key: string) => string;
   showLanguagePalette: boolean;
@@ -23,6 +28,8 @@ interface QuickPickLayerProps {
   handleLanguagePaletteKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   filteredLanguages: LanguageOption[];
   activeFileLanguage?: string;
+  activeLanguageIndex: number;
+  setActiveLanguageIndex: (index: number) => void;
   selectLanguage: (langId: string) => void;
   showNewFilePalette: boolean;
   setShowNewFilePalette: (show: boolean) => void;
@@ -35,6 +42,16 @@ interface QuickPickLayerProps {
   setShowLangSwitchPalette: (show: boolean) => void;
   settingsLanguage: 'ja' | 'en';
   setSettingsLanguage: (lang: 'ja' | 'en') => void;
+  showRecentPalette: boolean;
+  setShowRecentPalette: (show: boolean) => void;
+  recentSearch: string;
+  setRecentSearch: (value: string) => void;
+  recentInputRef: React.RefObject<HTMLInputElement | null>;
+  filteredRecentFiles: RecentFileEntry[];
+  openRecentFile: (filePath: string) => void;
+  handleRecentPaletteKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  activeRecentIndex: number;
+  setActiveRecentIndex: (index: number) => void;
 }
 
 export function QuickPickLayer({
@@ -46,7 +63,8 @@ export function QuickPickLayer({
   languageInputRef,
   handleLanguagePaletteKeyDown,
   filteredLanguages,
-  activeFileLanguage,
+  activeLanguageIndex,
+  setActiveLanguageIndex,
   selectLanguage,
   showNewFilePalette,
   setShowNewFilePalette,
@@ -59,6 +77,16 @@ export function QuickPickLayer({
   setShowLangSwitchPalette,
   settingsLanguage,
   setSettingsLanguage,
+  showRecentPalette,
+  setShowRecentPalette,
+  recentSearch,
+  setRecentSearch,
+  recentInputRef,
+  filteredRecentFiles,
+  openRecentFile,
+  handleRecentPaletteKeyDown,
+  activeRecentIndex,
+  setActiveRecentIndex,
 }: QuickPickLayerProps) {
   return (
     <>
@@ -84,11 +112,12 @@ export function QuickPickLayer({
               />
             </div>
             <div className="quickpick-list">
-              {filteredLanguages.map((lang) => (
+              {filteredLanguages.map((lang, index) => (
                 <div
                   key={lang.id}
-                  className={`quickpick-item ${activeFileLanguage === lang.id ? 'active' : ''}`}
+                  className={`quickpick-item ${activeLanguageIndex === index ? 'active' : ''}`}
                   onClick={() => selectLanguage(lang.id)}
+                  onMouseEnter={() => setActiveLanguageIndex(index)}
                 >
                   <span className="quickpick-item-label">
                     {lang.aliases && lang.aliases.length > 0 ? lang.aliases[0] : lang.id}
@@ -207,6 +236,54 @@ export function QuickPickLayer({
                 <Languages size={16} />
                 <span className="quickpick-item-label">{t('langSwitch.en')}</span>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRecentPalette && (
+        <div
+          className="quickpick-overlay"
+          onClick={() => {
+            setShowRecentPalette(false);
+            setRecentSearch('');
+          }}
+        >
+          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
+            <div className="quickpick-input-wrapper">
+              <div className="quickpick-title">{t('recentPalette.title')}</div>
+              <input
+                ref={recentInputRef}
+                className="quickpick-input"
+                type="text"
+                placeholder={t('recentPalette.placeholder')}
+                value={recentSearch}
+                onChange={(e) => setRecentSearch(e.target.value)}
+                onKeyDown={handleRecentPaletteKeyDown}
+              />
+            </div>
+            <div className="quickpick-list">
+              {filteredRecentFiles.map((entry, index) => (
+                <div
+                  key={entry.path}
+                  className={`quickpick-item ${activeRecentIndex === index ? 'active' : ''}`}
+                  onClick={() => {
+                    openRecentFile(entry.path);
+                    setShowRecentPalette(false);
+                    setRecentSearch('');
+                  }}
+                  onMouseEnter={() => setActiveRecentIndex(index)}
+                  title={entry.path}
+                >
+                  <span className="quickpick-item-label">{entry.name}</span>
+                  <span className="quickpick-item-sub">{entry.path}</span>
+                </div>
+              ))}
+              {filteredRecentFiles.length === 0 && (
+                <div className="quickpick-item" style={{ opacity: 0.5, pointerEvents: 'none' }}>
+                  {t('recentPalette.empty')}
+                </div>
+              )}
             </div>
           </div>
         </div>

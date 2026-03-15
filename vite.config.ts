@@ -13,7 +13,7 @@ export default defineConfig(() => {
     // isElectron が true ならデスクトップアプリ用の相対パス './'
     // false なら GitHub Pages用のパス '/リポジトリ名/' にします
     base: isElectron ? './' : '/markdown-code-editor/', // ← 実際のリポジトリ名に変更してください
-
+    build: { chunkSizeWarningLimit: 2000 },
     plugins: [
       react(),
       // Electronモードの時だけElectron関連のプラグインを有効にする

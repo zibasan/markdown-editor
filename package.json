@@ -6,10 +6,13 @@
   "main": "dist-electron/main.js",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:electron": "cross-env BUILD_TARGET=electron vite",
+    "dev:web": "vite",
+    "dev:app": "cross-env BUILD_TARGET=electron vite",
     "build:web": "tsc && vite build",
-    "build:electron": "tsc && cross-env BUILD_TARGET=electron vite build && electron-builder",
+    "build:app@quick": "tsc && cross-env BUILD_TARGET=electron vite build",
+    "build:app@quick_sil": "tsc && cross-env CI=true BUILD_TARGET=electron vite build",
+    "build:app@install": "electron-builder",
+    "build:app@full": "pnpm run build:app@quick && pnpm run build:app@install",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "preview": "vite preview",
@@ -88,11 +91,18 @@
       "license": "build/license.txt",
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico"
+      "installerHeaderIcon": "build/icon.ico",
+      "include": "build/installer.nsh"
     },
     "files": [
       "dist/**/*",
       "dist-electron/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
+      }
     ],
     "mac": {
       "target": "dmg",

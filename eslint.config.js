@@ -44,7 +44,7 @@ export default defineConfig([
       // === 3. @stylistic のルール (Prettierと競合しないもの) ===
       // return文の直前には必ず空行を入れる（JSXを返すコンポーネントの可読性が大幅に向上します）
       '@stylistic/padding-line-between-statements': [
-        'warn',
+        'off',
         { blankLine: 'always', prev: '*', next: 'return' },
       ],
 

@@ -16,8 +16,11 @@ const ja: TranslationDict = {
   'menu.view': '表示',
   'menu.file.new': '新しいファイル',
   'menu.file.open': 'ファイルを開く',
+  'menu.file.openFolder': 'フォルダを開く',
   'menu.file.save': '保存',
   'menu.file.export': 'エクスポート',
+  'menu.file.recent': '最近使ったファイル',
+  'menu.file.recent.empty': '最近のファイルはありません',
   'menu.edit.undo': '元に戻す',
   'menu.edit.redo': 'やり直す',
   'menu.view.commandPalette': 'コマンドパレット',
@@ -27,6 +30,14 @@ const ja: TranslationDict = {
   'menu.view.language': '言語の変更',
   'menu.view.toggleCommandBar': 'コマンドバーの表示切替',
   'menu.compact.tooltip': 'メニュー',
+  'menu.help': 'ヘルプ',
+  'menu.help.about': 'Markdown Editorについて',
+  'menu.help.association': '.md の関連付け',
+  'menu.help.association.register': '関連付ける',
+  'menu.help.association.unregister': '関連付けを解除する',
+  'recentPalette.title': '最近使ったファイル',
+  'recentPalette.placeholder': 'ファイル名やパスで検索...',
+  'recentPalette.empty': '最近のファイルはありません',
 
   // === タイトルバー ===
   'titlebar.searchPlaceholder': '検索またはコマンドを入力...',
@@ -42,6 +53,10 @@ const ja: TranslationDict = {
   // === サイドバー ===
   'sidebar.explorer': 'エクスプローラー',
   'sidebar.outline': 'アウトライン',
+  'sidebar.empty': 'ファイルが開かれていません。',
+  'sidebar.empty.createFile': 'ファイルを作成',
+  'sidebar.empty.openFile': 'ファイルを開く',
+  'sidebar.empty.createFolder': 'フォルダを作成',
   'sidebar.newFile': '新しいファイル...',
   'sidebar.openFile': 'ファイルを開く...',
   'sidebar.close': '閉じる',
@@ -94,6 +109,11 @@ const ja: TranslationDict = {
   'status.created': 'を作成しました。',
   'status.fileNotFound':
     'ローカルにファイルが見つかりません。\nファイルをローカルに新規作成しました:',
+  'status.registerAssociationSuccess': '関連付けを登録しました。',
+  'status.registerAssociationFail': '関連付けの登録に失敗しました。',
+  'status.unregisterAssociationSuccess': '関連付けを解除しました。',
+  'status.unregisterAssociationFail': '関連付けの解除に失敗しました。',
+  'status.openRecentFail': '最近使ったファイルを開けませんでした。',
 
   // === コンテキストメニュー ===
   'context.open': '開く',
@@ -200,7 +220,9 @@ const ja: TranslationDict = {
   'cmdPalette.customOpt.saveFile': 'ファイル: 現在のファイルを保存...',
   'cmdPalette.customOpt.openSettings': '基本設定: 設定を開く...',
   'cmdPalette.customOpt.openFile': 'ファイル: ファイルを開く...',
+  'cmdPalette.customOpt.openFolder': 'ファイル: フォルダを開く...',
   'cmdPalette.customOpt.closeAllFiles': 'ファイル: 全てのタブを強制的に閉じる',
+  'cmdPalette.customOpt.openRecent': 'ファイル: 最近使ったファイルを開く...',
 };
 
 // 英語の翻訳辞書
@@ -211,8 +233,11 @@ const en: TranslationDict = {
   'menu.view': 'View',
   'menu.file.new': 'New File',
   'menu.file.open': 'Open File',
+  'menu.file.openFolder': 'Open Folder',
   'menu.file.save': 'Save',
   'menu.file.export': 'Export',
+  'menu.file.recent': 'Recent Files',
+  'menu.file.recent.empty': 'No recent files',
   'menu.edit.undo': 'Undo',
   'menu.edit.redo': 'Redo',
   'menu.view.commandPalette': 'Command Palette',
@@ -222,6 +247,14 @@ const en: TranslationDict = {
   'menu.view.language': 'Change Language',
   'menu.view.toggleCommandBar': 'Toggle Command Bar',
   'menu.compact.tooltip': 'Menu',
+  'menu.help': 'Help',
+  'menu.help.about': 'About Markdown Editor',
+  'menu.help.association': 'File Association',
+  'menu.help.association.register': 'Associate .md Files',
+  'menu.help.association.unregister': 'Remove Association',
+  'recentPalette.title': 'Recent Files',
+  'recentPalette.placeholder': 'Search by name or path...',
+  'recentPalette.empty': 'No recent files',
 
   // === Title bar ===
   'titlebar.searchPlaceholder': 'Search or enter a command...',
@@ -237,6 +270,10 @@ const en: TranslationDict = {
   // === Sidebar ===
   'sidebar.explorer': 'Explorer',
   'sidebar.outline': 'Outline',
+  'sidebar.empty': 'No files are open.',
+  'sidebar.empty.createFile': 'Create File',
+  'sidebar.empty.openFile': 'Open File',
+  'sidebar.empty.createFolder': 'Create Folder',
   'sidebar.newFile': 'New File...',
   'sidebar.openFile': 'Open File...',
   'sidebar.close': 'Close',
@@ -288,6 +325,11 @@ const en: TranslationDict = {
   'status.errorSaveFile': 'Failed to save file.',
   'status.created': 'created.',
   'status.fileNotFound': 'File not found locally. Created as new file:',
+  'status.registerAssociationSuccess': 'File association registered.',
+  'status.registerAssociationFail': 'Failed to register file association.',
+  'status.unregisterAssociationSuccess': 'File association removed.',
+  'status.unregisterAssociationFail': 'Failed to remove file association.',
+  'status.openRecentFail': 'Failed to open recent file.',
 
   // === Context menu ===
   'context.open': 'Open',
@@ -394,7 +436,9 @@ const en: TranslationDict = {
   'cmdPalette.customOpt.saveFile': 'File: Save Current File...',
   'cmdPalette.customOpt.openSettings': 'Preferences: Open Settings',
   'cmdPalette.customOpt.openFile': 'File: Open File...',
+  'cmdPalette.customOpt.openFolder': 'File: Open Folder...',
   'cmdPalette.customOpt.closeAllFiles': 'File: Force Close All Editor Tabs',
+  'cmdPalette.customOpt.openRecent': 'File: Open Recent File...',
 };
 
 // 翻訳辞書のマップ

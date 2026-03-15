@@ -18,7 +18,6 @@ interface OverlayLayerProps {
   openFileFromDisk: () => void;
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   handleFileOpen: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  toastMsg: string | null;
 }
 
 export function OverlayLayer({
@@ -33,7 +32,6 @@ export function OverlayLayer({
   openFileFromDisk,
   fileInputRef,
   handleFileOpen,
-  toastMsg,
 }: OverlayLayerProps) {
   return (
     <>
@@ -106,12 +104,6 @@ export function OverlayLayer({
         accept="*/*"
         style={{ display: 'none' }}
       />
-
-      {toastMsg && (
-        <div className="toast-container">
-          <div className="toast-notification">{toastMsg}</div>
-        </div>
-      )}
     </>
   );
 }

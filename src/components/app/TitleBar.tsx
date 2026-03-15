@@ -3,6 +3,7 @@ import { Check, Monitor, Moon, Search, Sun } from 'lucide-react';
 import type { EditorSettings } from '../../types';
 
 type Theme = 'system' | 'light' | 'dark';
+type RecentFileEntry = { path: string; name: string };
 
 interface TitleBarProps {
   t: (key: string) => string;
@@ -12,6 +13,9 @@ interface TitleBarProps {
   setActiveMenu: (menu: string | null) => void;
   openNewFilePalette: () => void;
   openFileFromDisk: () => void;
+  openFolderFromDisk: () => void;
+  openRecentFile: (filePath: string) => void;
+  recentFiles: RecentFileEntry[];
   hasActiveFile: boolean;
   handleSave: () => void;
   triggerUndo: () => void;
@@ -21,11 +25,15 @@ interface TitleBarProps {
   setShowPreview: (show: boolean) => void;
   setShowLangSwitchPalette: (show: boolean) => void;
   setIsSettingsOpen: (open: boolean) => void;
+  registerFileAssociation: () => void;
+  unregisterFileAssociation: () => void;
+  showAboutDialog: () => void;
   settings: EditorSettings;
   setSettings: (settings: EditorSettings) => void;
   theme: Theme;
   toggleTheme: () => void;
   activeFileName: string;
+  isElectron: boolean;
   titleBarContextMenu: { x: number; y: number } | null;
   setTitleBarContextMenu: (menu: { x: number; y: number } | null) => void;
   onTitleBarContextMenu: (e: React.MouseEvent<HTMLElement>) => void;
@@ -40,6 +48,9 @@ export function TitleBar({
   setActiveMenu,
   openNewFilePalette,
   openFileFromDisk,
+  openFolderFromDisk,
+  openRecentFile,
+  recentFiles,
   hasActiveFile,
   handleSave,
   triggerUndo,
@@ -49,21 +60,20 @@ export function TitleBar({
   setShowPreview,
   setShowLangSwitchPalette,
   setIsSettingsOpen,
+  registerFileAssociation,
+  unregisterFileAssociation,
+  showAboutDialog,
   settings,
   setSettings,
   theme,
   toggleTheme,
   activeFileName,
+  isElectron,
   titleBarContextMenu,
   setTitleBarContextMenu,
   onTitleBarContextMenu,
   logoImage,
 }: TitleBarProps) {
-  // 【追加】Electron環境（デスクトップアプリ）かどうかを判定
-  const isElectron = typeof window !== 'undefined' && window.electronAPI !== undefined;
-  // eslint-disable-next-line no-console
-  console.log('★Electron環境ですか？:', isElectron, window.electronAPI);
-
   return (
     <>
       <header
@@ -108,6 +118,18 @@ export function TitleBar({
                       <span>{t('menu.file.open')}</span>
                       <span className="menu-dropdown-shortcut">Ctrl+O</span>
                     </div>
+                    {isElectron && (
+                      <div
+                        className="menu-dropdown-item"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          openFolderFromDisk();
+                          setActiveMenu(null);
+                        }}
+                      >
+                        <span>{t('menu.file.openFolder')}</span>
+                      </div>
+                    )}
                     <div className="menu-dropdown-separator"></div>
                     <div
                       className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
@@ -120,6 +142,40 @@ export function TitleBar({
                       <span>{t('menu.file.save')}</span>
                       <span className="menu-dropdown-shortcut">Ctrl+S</span>
                     </div>
+                    {isElectron && (
+                      <>
+                        <div className="menu-dropdown-separator"></div>
+                        <div className="menu-dropdown-item has-submenu">
+                          <span>{t('menu.file.recent')}</span>
+                          <span className="menu-dropdown-shortcut">▶</span>
+                          <div className="menu-dropdown-submenu">
+                            {recentFiles.length === 0 ? (
+                              <div className="menu-dropdown-item disabled">
+                                <span>{t('menu.file.recent.empty')}</span>
+                              </div>
+                            ) : (
+                              recentFiles.map((entry) => (
+                                <div
+                                  key={entry.path}
+                                  className="menu-dropdown-item recent-file-item"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openRecentFile(entry.path);
+                                    setActiveMenu(null);
+                                  }}
+                                  title={entry.path}
+                                >
+                                  <div className="recent-file-label">
+                                    <span className="recent-file-name">{entry.name}</span>
+                                    <span className="recent-file-path">{entry.path}</span>
+                                  </div>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
@@ -219,6 +275,56 @@ export function TitleBar({
                   </div>
                 )}
               </div>
+
+              {isElectron && (
+                <div
+                  className={`menu-item ${activeMenu === 'help' ? 'active' : ''}`}
+                  onClick={() => setActiveMenu(activeMenu === 'help' ? null : 'help')}
+                  onMouseEnter={() => activeMenu && setActiveMenu('help')}
+                >
+                  {t('menu.help')}
+                  {activeMenu === 'help' && (
+                    <div className="menu-dropdown">
+                      <div
+                        className="menu-dropdown-item"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          showAboutDialog();
+                          setActiveMenu(null);
+                        }}
+                      >
+                        <span>{t('menu.help.about')}</span>
+                      </div>
+                      <div className="menu-dropdown-item has-submenu">
+                        <span>{t('menu.help.association')}</span>
+                        <span className="menu-dropdown-shortcut">▶</span>
+                        <div className="menu-dropdown-submenu">
+                          <div
+                            className="menu-dropdown-item"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              registerFileAssociation();
+                              setActiveMenu(null);
+                            }}
+                          >
+                            <span>{t('menu.help.association.register')}</span>
+                          </div>
+                          <div
+                            className="menu-dropdown-item"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              unregisterFileAssociation();
+                              setActiveMenu(null);
+                            }}
+                          >
+                            <span>{t('menu.help.association.unregister')}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
