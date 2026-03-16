@@ -1,0 +1,40 @@
+name: Release Electron App
+
+# 「v」から始まるタグ（例: v1.0.1）がプッシュされた時だけ自動実行する
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  release:
+    # Windowsインストーラーを作るので、Windowsのサーバーを使う
+    runs-on: windows-latest
+
+    # GitHub Releasesにファイルを書き込むための権限
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 10
+
+      - name: Install Dependencies
+        run: pnpm install
+
+      - name: Build and Publish to GitHub Releases
+        # Step 1 で作ったスクリプトを実行
+        run: pnpm run release
+        env:
+          # GitHubが自動発行するワンタイムパスワード。これを使ってReleasesにアップロードする
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
