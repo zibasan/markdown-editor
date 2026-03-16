@@ -13,6 +13,7 @@
     "build:app@quick_sil": "tsc && cross-env CI=true BUILD_TARGET=electron vite build",
     "build:app@install": "electron-builder",
     "build:app@full": "pnpm run build:app@quick && pnpm run build:app@install",
+    "release_app": "tsc && cross-env BUILD_TARGET=electron vite build && electron-builder --publish always",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix && prettier --write .",
     "preview": "vite preview",
