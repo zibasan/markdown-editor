@@ -25,4 +25,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimize: () => ipcRenderer.send('window:minimize'),
   maximize: () => ipcRenderer.send('window:maximize'),
   close: () => ipcRenderer.send('window:close'),
+  onUpdateDownloaded: (callback: (version: string) => void) => {
+    // eslint-disable-next-line
+    ipcRenderer.on('updater:downloaded', (_event: any, version: string) => callback(version));
+  },
+  installUpdate: () => ipcRenderer.invoke('updater:install'),
 });

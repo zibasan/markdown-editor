@@ -1,4 +1,5 @@
-import { Check, Monitor, Moon, Search, Sun } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Check, Monitor, Moon, Search, Sun, Download } from 'lucide-react';
 
 import type { EditorSettings } from '../../types';
 
@@ -74,6 +75,18 @@ export function TitleBar({
   onTitleBarContextMenu,
   logoImage,
 }: TitleBarProps) {
+  // 【追加】アップデート情報を保持するState
+  const [updateReadyVersion, setUpdateReadyVersion] = useState<string | null>(null);
+
+  // 【追加】ダウンロード完了通知を受け取る
+  useEffect(() => {
+    if (isElectron && window.electronAPI?.onUpdateDownloaded) {
+      window.electronAPI.onUpdateDownloaded((version) => {
+        setUpdateReadyVersion(version);
+      });
+    }
+  }, [isElectron]);
+
   return (
     <>
       <header
@@ -346,6 +359,33 @@ export function TitleBar({
 
         {/* 【修正】右側セクション（テーマ切り替え + ウィンドウコントロール） */}
         <div className="titlebar-section titlebar-right">
+          {/* 【追加】アップデート準備完了ボタン */}
+          {updateReadyVersion && (
+            <button
+              style={{
+                backgroundColor: '#107c10',
+                color: '#ffffff',
+                border: 'none',
+                outline: 'none',
+                height: '24px',
+                marginRight: '8px',
+                padding: '0 8px',
+                borderRadius: '4px',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+              onClick={() => window.electronAPI?.installUpdate?.()}
+              title="クリックして再起動し、アップデートを適用します"
+            >
+              <Download size={14} color="#008000" />
+              更新 (v{updateReadyVersion})
+            </button>
+          )}
+
           <button
             className="theme-toggle-btn"
             onClick={toggleTheme}

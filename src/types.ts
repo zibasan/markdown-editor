@@ -58,3 +58,8 @@ export const DEFAULT_SETTINGS: EditorSettings = {
   menuBarVisibility: 'visible',
   showCommandBar: true,
 };
+
+export interface ElectronAPI {
+  onUpdateDownloaded?: (callback: (version: string) => void) => void;
+  installUpdate?: () => Promise<void>;
+}

@@ -19,5 +19,7 @@ interface Window {
     minimize: () => void;
     maximize: () => void;
     close: () => void;
+    onUpdateDownloaded: (callback: (version: string) => void) => void;
+    installUpdate: () => Promise<void>;
   };
 }

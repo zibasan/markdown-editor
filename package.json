@@ -1,7 +1,7 @@
 {
   "name": "markdown-code-editor",
   "private": true,
-  "version": "1.0.2",
+  "version": "1.0.3",
   "author": "zibasan",
   "main": "dist-electron/main.js",
   "type": "module",
@@ -24,6 +24,7 @@
     "@monaco-editor/react": "^4.7.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@vscode/codicons": "^0.0.44",
+    "electron-updater": "^6.8.3",
     "lucide-react": "^0.577.0",
     "monaco-editor": "^0.55.1",
     "monaco-editor-textmate": "^4.0.0",
@@ -112,6 +113,13 @@
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "zibasan",
+        "repo": "markdown-editor"
+      }
+    ]
   }
 }

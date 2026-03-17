@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog, Notification, nativeImage } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url'; // ← これを追加
 import fs from 'node:fs/promises';
@@ -172,6 +173,34 @@ app.whenReady().then(() => {
     }
   });
 
+  // ==========================================
+  // 【追加】自動アップデート機能
+  // ==========================================
+  autoUpdater.autoDownload = true; // 更新があれば自動で裏でダウンロード
+  autoUpdater.autoInstallOnAppQuit = true; // アプリを普通に閉じた時もついでに更新する
+
+  // ダウンロードが完了したら、React(画面)側に「ボタンを出して！」と通知する
+  autoUpdater.on('update-downloaded', (info) => {
+    if (win && !win.isDestroyed()) {
+      win.webContents.send('updater:downloaded', info.version);
+    }
+  });
+
+  // React(画面)のボタンが押されたら、アプリを終了して更新を適用する
+  ipcMain.handle('updater:install', () => {
+    autoUpdater.quitAndInstall();
+  });
+
+  // 開発中(dev)はエラーになるため、ビルドされた本番環境のみで実行する
+  if (app.isPackaged) {
+    // 起動して少し（例: 3秒）経ってから裏で確認を開始する（起動を重くしないため）
+    setTimeout(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch(() => {
+        // オフライン時などのエラーは無視する
+      });
+    }, 3000);
+  }
+
   app.on('open-file', (event, filePath) => {
     event.preventDefault();
     sendFileToRenderer(filePath);
@@ -266,7 +295,7 @@ app.whenReady().then(() => {
   ipcMain.handle('app:showAbout', async () => {
     // 修正1: undefined を明示的に代入するのをやめる
     const targetWindow = BrowserWindow.getFocusedWindow() ?? win;
-    const iconPath = path.join(process.env.VITE_BUILD!, 'icon.ico');
+    const iconPath = path.join(process.env.VITE_PUBLIC!, 'icon.ico');
     const icon = nativeImage.createFromPath(iconPath);
     const version = app.getVersion();
 
