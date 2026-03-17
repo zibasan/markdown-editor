@@ -8,8 +8,11 @@ on:
 
 jobs:
   release:
-    # Windowsインストーラーを作るので、Windowsのサーバーを使う
-    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest]
+    # Windows版とmacOS版の両方を作る
+    runs-on: ${{  matrix.os  }}
 
     # GitHub Releasesにファイルを書き込むための権限
     permissions:
@@ -38,3 +41,5 @@ jobs:
         env:
           # GitHubが自動発行するワンタイムパスワード。これを使ってReleasesにアップロードする
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOSの署名エラーを無視する
+          CSC_IDENTITY_AUTO_DISCOVERY: false
