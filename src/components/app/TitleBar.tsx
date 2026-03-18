@@ -298,6 +298,24 @@ export function TitleBar({
                   {t('menu.help')}
                   {activeMenu === 'help' && (
                     <div className="menu-dropdown">
+                      {/* 【追加】アップデート準備完了時のみ表示されるメニュー */}
+                      {updateReadyVersion && (
+                        <>
+                          <div
+                            className="menu-dropdown-item menu-dropdown-item-update"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              window.electronAPI?.installUpdate?.();
+                              setActiveMenu(null);
+                            }}
+                          >
+                            <Download size={16} />
+                            <span>再起動して更新する (v{updateReadyVersion})</span>
+                          </div>
+                          <div className="menu-dropdown-separator"></div>
+                        </>
+                      )}
+
                       <div
                         className="menu-dropdown-item"
                         onClick={(e) => {
@@ -359,30 +377,17 @@ export function TitleBar({
 
         {/* 【修正】右側セクション（テーマ切り替え + ウィンドウコントロール） */}
         <div className="titlebar-section titlebar-right">
-          {/* 【追加】アップデート準備完了ボタン */}
+          {/* アップデート準備完了ボタン */}
           {updateReadyVersion && (
             <button
-              style={{
-                backgroundColor: '#107c10',
-                color: '#ffffff',
-                border: 'none',
-                outline: 'none',
-                height: '24px',
-                marginRight: '8px',
-                padding: '0 8px',
-                borderRadius: '4px',
-                fontSize: '11px',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '4px',
-              }}
+              className="update-btn"
               onClick={() => window.electronAPI?.installUpdate?.()}
-              title="クリックして再起動し、アップデートを適用します"
+              data-tooltip={`アップデートの準備ができました (v${updateReadyVersion})`}
             >
-              <Download size={14} color="#008000" />
-              更新 (v{updateReadyVersion})
+              <div className="update-content">
+                <Download size={16} />
+                <span className="update-text">クリックしてアップデート...</span>
+              </div>
             </button>
           )}
 

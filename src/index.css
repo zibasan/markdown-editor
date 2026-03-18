@@ -337,6 +337,14 @@ select,
   background-color: var(--button-active);
   color: #fff;
 }
+.menu-dropdown-item-update {
+  color: #3d9e60;
+  font-weight: bold;
+}
+.menu-dropdown-item.menu-dropdown-item-update:hover {
+  background-color: var(--button-active);
+  color: #ffffff;
+}
 .menu-dropdown-item.disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -1872,7 +1880,55 @@ select,
 /* クリックしたい要素には確実に no-drag を設定し、OSからクリック判定を取り戻す */
 .app-titlebar.is-electron .menu-bar,
 .app-titlebar.is-electron .theme-toggle-btn,
+.app-titlebar.is-electron .update-btn,
 .app-titlebar.is-electron .command-palette-trigger,
 .app-titlebar.is-electron .menu-item {
   -webkit-app-region: no-drag;
+}
+
+.update-btn {
+  background: transparent;
+  border: none;
+  color: #3d9e60; /* アイコンの緑色 */
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+}
+
+.update-btn:hover {
+  background-color: rgba(0, 255, 85, 0.28); /* テーマボタンと同じホバー色 */
+  color: #ffffff;
+  transition: background-color 0.25s ease;
+}
+
+.update-content {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+/* 【追加】ホバー時に広がるテキストのスタイル */
+.update-text {
+  max-width: 0; /* 最初は幅ゼロで見えない */
+  opacity: 0;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: bold;
+  margin-left: 0;
+  transition:
+    max-width 0.3s ease,
+    opacity 0.2s ease,
+    margin-left 0.3s ease;
+  font-family: var(--app-font);
+}
+
+/* ホバーした時にテキストの幅と余白を広げる */
+.update-btn:hover .update-text {
+  max-width: 150px; /* テキストが収まる十分な幅 */
+  opacity: 1;
+  margin-left: 6px; /* アイコンとの間に隙間を作る */
 }

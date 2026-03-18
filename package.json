@@ -1,7 +1,7 @@
 {
   "name": "markdown-code-editor",
   "private": true,
-  "version": "1.0.3",
+  "version": "1.0.3-a",
   "author": "zibasan",
   "main": "dist-electron/main.js",
   "type": "module",
