@@ -195,10 +195,7 @@ app.whenReady().then(() => {
   if (app.isPackaged) {
     // 起動して少し（例: 3秒）経ってから裏で確認を開始する（起動を重くしないため）
     setTimeout(() => {
-      autoUpdater.checkForUpdatesAndNotify().catch((err) => {
-        const errorMessage = err instanceof Error ? err.stack || err.message : String(err);
-        dialog.showErrorBox('アップデート確認エラー詳細', errorMessage);
-      });
+      autoUpdater.checkForUpdatesAndNotify().catch(() => {});
     }, 3000);
   }
 
