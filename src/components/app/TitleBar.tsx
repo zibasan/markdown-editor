@@ -310,7 +310,9 @@ export function TitleBar({
                             }}
                           >
                             <Download size={16} />
-                            <span>再起動して更新する (v{updateReadyVersion})</span>
+                            <span>
+                              {t('menu.help.update')} (v{updateReadyVersion})
+                            </span>
                           </div>
                           <div className="menu-dropdown-separator"></div>
                         </>
@@ -382,11 +384,11 @@ export function TitleBar({
             <button
               className="update-btn"
               onClick={() => window.electronAPI?.installUpdate?.()}
-              data-tooltip={`アップデートの準備ができました (v${updateReadyVersion})`}
+              data-tooltip={`${t('titlebar.updateButton')} (v${updateReadyVersion})`}
             >
               <div className="update-content">
                 <Download size={16} />
-                <span className="update-text">クリックしてアップデート...</span>
+                <span className="update-text">{t('titlebar.updateButtonText')}</span>
               </div>
             </button>
           )}

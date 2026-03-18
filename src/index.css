@@ -1932,3 +1932,13 @@ select,
   opacity: 1;
   margin-left: 6px; /* アイコンとの間に隙間を作る */
 }
+
+/* Monaco Editorネイティブのプレースホルダー用CSS */
+.monaco-placeholder::before {
+  content: var(
+    --editor-empty-text,
+    "You can add Markdown syntax from the toolbar above, or add it inline by start typing '/'."
+  ); /* ここに表示したい文字を入れる */
+  color: rgba(162, 162, 162, 0.5);
+  pointer-events: none; /* マウスイベントを貫通させる */
+}

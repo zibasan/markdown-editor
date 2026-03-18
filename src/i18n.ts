@@ -35,6 +35,7 @@ const ja: TranslationDict = {
   'menu.help.association': '.md の関連付け',
   'menu.help.association.register': '関連付ける',
   'menu.help.association.unregister': '関連付けを解除する',
+  'menu.help.update': '再起動して更新する',
   'recentPalette.title': '最近使ったファイル',
   'recentPalette.placeholder': 'ファイル名やパスで検索...',
   'recentPalette.empty': '最近のファイルはありません',
@@ -43,6 +44,8 @@ const ja: TranslationDict = {
   'titlebar.searchPlaceholder': '検索またはコマンドを入力...',
   'titlebar.commandPaletteTooltip': 'コマンドパレットを開く (F1)',
   'titlebar.themeToggle': 'テーマ切り替え',
+  'titlebar.updateButtonTooltip': `アップデートの準備ができました`,
+  'titlebar.updateButtonText': 'クリックしてアップデート...',
 
   // === アクティビティバー ===
   'activity.explorer': 'エクスプローラー',
@@ -158,6 +161,10 @@ const ja: TranslationDict = {
   'langSwitch.ja': '日本語',
   'langSwitch.en': 'English',
 
+  // === エディターのプレースホルダー ===
+  'editor.placeholder':
+    "上のツールバーからMarkdown構文を追加するか、'/'と入力してMarkdown構文をインラインで追加します",
+
   // === ツールバー ===
   'toolbar.save': '保存 (Ctrl+S)',
   'toolbar.undo': '元に戻す (Ctrl+Z)',
@@ -252,6 +259,7 @@ const en: TranslationDict = {
   'menu.help.association': 'File Association',
   'menu.help.association.register': 'Associate .md Files',
   'menu.help.association.unregister': 'Remove Association',
+  'menu.help.update': 'Restart to update',
   'recentPalette.title': 'Recent Files',
   'recentPalette.placeholder': 'Search by name or path...',
   'recentPalette.empty': 'No recent files',
@@ -260,6 +268,8 @@ const en: TranslationDict = {
   'titlebar.searchPlaceholder': 'Search or enter a command...',
   'titlebar.commandPaletteTooltip': 'Open Command Palette (F1)',
   'titlebar.themeToggle': 'Toggle Theme',
+  'titlebar.updateButtonTooltip': `The update is ready.`,
+  'titlebar.updateButtonText': 'Click to update...',
 
   // === Activity bar ===
   'activity.explorer': 'Explorer',
@@ -373,6 +383,10 @@ const en: TranslationDict = {
   'langSwitch.title': 'Change Display Language',
   'langSwitch.ja': 'Japanese',
   'langSwitch.en': 'English',
+
+  // === Editor Placeholder ===
+  'editor.placeholder':
+    "You can add Markdown syntax from the toolbar above, or add it inline by start typing '/'.",
 
   // === Toolbar ===
   'toolbar.save': 'Save (Ctrl+S)',

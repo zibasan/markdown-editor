@@ -11,6 +11,7 @@ import stylistic from '@stylistic/eslint-plugin';
 
 export default defineConfig([
   globalIgnores(['dist']),
+  { ignores: ['dist', 'dist-electron', 'build', 'release'] },
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

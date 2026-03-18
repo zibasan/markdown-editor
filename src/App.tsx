@@ -1148,6 +1148,191 @@ function App() {
       },
     });
 
+    // === スラッシュコマンド（スニペット補完）の登録 ===
+    monacoInstance.languages.registerCompletionItemProvider('markdown', {
+      triggerCharacters: ['/'], // '/' をトリガーとして補完メニューを開く
+      provideCompletionItems: (model: any, position: any) => {
+        // カーソル位置までのテキストを取得
+        const textUntilPosition = model.getValueInRange({
+          startLineNumber: position.lineNumber,
+          startColumn: 1,
+          endLineNumber: position.lineNumber,
+          endColumn: position.column,
+        });
+
+        // 直前の文字列が '/' または ' /' などで終わっているかチェック
+        const match = textUntilPosition.match(/(^|\s)\/$/);
+        if (!match) {
+          return { suggestions: [] };
+        }
+
+        // 置き換える範囲（入力した '/' を消してスニペットに置き換えるための範囲
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: position.column - 1, // '/' の位置
+          endColumn: position.column,
+        };
+
+        const suggestions = [
+          {
+            label: '/h1',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Header 1',
+            insertText: '# ${1:Header 1}\n',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/h2',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Header 2',
+            insertText: '## ${1:Header 2}\n',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/h3',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Header 3',
+            insertText: '### ${1:Header 3}\n',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/bold',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Bold',
+            insertText: '**${1:text}**',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/italic',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Italic',
+            insertText: '*${1:text}*',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/strike',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Strikethrough',
+            insertText: '~~${1:text}~~',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/quote',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Quote',
+            insertText: '> ${1:text}\n',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/inlinecode',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Inline Code Block',
+            insertText: '`${1:code}`',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/code',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Code Block',
+            insertText: '```${1:lang}\n${2:code}\n```',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/link',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Link',
+            insertText: '[${1:link text}](${2:https://...})',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/table',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Table',
+            insertText: '| ${1:Header} | ${2:Header} |\n| --- | --- |\n| ${3:Cell} | ${4:Cell} |\n',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/bl',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Bullet points list',
+            insertText: '- ${1:item}\n  - ${2:nested item}',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/num',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Number list',
+            insertText: '1. ${1:item1}\n2. ${2:item2}',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/task',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Tasklist',
+            insertText: '- [ ] ${1:Imcoplete task}\n- [x] ${2:Complete task}',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/note',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Alert syntax(Github extension); Note',
+            insertText: '> [!NOTE]\n> ${1:text}',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/tip',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Alert syntax(Github extension); Tip',
+            insertText: '> [!TIP]\n> ${1:text}',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/important',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Alert syntax(Github extension); Important',
+            insertText: '> [!IMPORTANT]\n> ${1:text}',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/caution',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Alert syntax(Github extension); Caution',
+            insertText: '>[!CAUTION]\n> ${1:text}',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '/horizon',
+            kind: monacoInstance.languages.CompletionItemKind.Snippet,
+            documentation: 'Horizontal line',
+            insertText: '\n---\n',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+        ];
+
+        return { suggestions: suggestions };
+      },
+    });
+
     // === カスタムテーマ(VSCode Dark+風シンタックスハイライト)の定義 ===
     // Monaco EditorのMarkdown Monarchトークナイザーが出力する実際のトークン名に対応
     monacoInstance.editor.defineTheme('vscode-markdown-dark', {
@@ -1254,6 +1439,40 @@ function App() {
   ) => {
     editorRef.current = editorInstance;
     monacoRef.current = monacoInstance;
+
+    const placeholderDecorationIds = { current: [] as string[] };
+    const updatePlaceholder = () => {
+      const model = editorInstance.getModel();
+      if (!model) return;
+
+      // エディターの中身が完全に空っぽの時だけ透かし文字を出す
+      if (model.getValueLength() === 0) {
+        placeholderDecorationIds.current = editorInstance.deltaDecorations(
+          placeholderDecorationIds.current,
+          [
+            {
+              range: new monacoInstance.Range(1, 1, 1, 1),
+              options: {
+                isWholeLine: true,
+                className: 'monaco-placeholder', // index.css に追加したクラス
+              },
+            },
+          ]
+        );
+      } else {
+        // 1文字でも入力されたら消す
+        placeholderDecorationIds.current = editorInstance.deltaDecorations(
+          placeholderDecorationIds.current,
+          []
+        );
+      }
+    };
+
+    // 初期状態のチェックと、テキスト変更時のチェック登録
+    updatePlaceholder();
+    editorInstance.onDidChangeModelContent(() => {
+      updatePlaceholder();
+    });
 
     // サポートされている言語（MarkdownとPlain Text）のみをフィルタリングして取得
     const langs = monacoInstance.languages.getLanguages();
@@ -2025,13 +2244,16 @@ function App() {
   return (
     <div
       className="app-container"
-      style={{
-        transform: `scale(${appScale})`,
-        transformOrigin: 'top left',
-        width: appScale < 1 ? `calc(100vw / ${appScale})` : '100vw',
-        height: appScale < 1 ? `calc(100vh / ${appScale})` : '100vh',
-        overflow: 'hidden',
-      }}
+      style={
+        {
+          transform: `scale(${appScale})`,
+          transformOrigin: 'top left',
+          width: appScale < 1 ? `calc(100vw / ${appScale})` : '100vw',
+          height: appScale < 1 ? `calc(100vh / ${appScale})` : '100vh',
+          overflow: 'hidden',
+          '--editor-empty-text': `"${t('editor.placeholder') || "You can add Markdown syntax from the toolbar above, or add it inline by start typing '/'."}"`,
+        } as any
+      }
     >
       <TitleBar
         t={t}
