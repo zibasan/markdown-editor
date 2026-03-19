@@ -384,7 +384,7 @@ export function TitleBar({
             <button
               className="update-btn"
               onClick={() => window.electronAPI?.installUpdate?.()}
-              data-tooltip={`${t('titlebar.updateButton')} (v${updateReadyVersion})`}
+              data-tooltip={`${t('titlebar.updateButtonTooltip')} (v${updateReadyVersion})`}
             >
               <div className="update-content">
                 <Download size={16} />

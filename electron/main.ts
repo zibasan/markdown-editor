@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url'; // ← これを追加
 import fs from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
+import { createT } from '../src/i18n';
 
 const execFileAsync = promisify(execFile);
 
@@ -160,6 +161,12 @@ app.on('window-all-closed', () => {
 // 2. createWindow() の呼び出しの前に、IPCの受信処理を追加します
 app.whenReady().then(() => {
   if (!gotLock) return;
+
+  // アップデート通知用; 言語を取得
+  const systemLocale = app.getLocale();
+  const lang = systemLocale.startsWith('ja') ? 'ja' : 'en';
+  const t = createT(lang);
+
   app.on('second-instance', (_event, argv) => {
     const paths = extractMarkdownPaths(argv);
     if (paths.length > 0) {
@@ -195,7 +202,12 @@ app.whenReady().then(() => {
   if (app.isPackaged) {
     // 起動して少し（例: 3秒）経ってから裏で確認を開始する（起動を重くしないため）
     setTimeout(() => {
-      autoUpdater.checkForUpdatesAndNotify().catch(() => {});
+      autoUpdater
+        .checkForUpdatesAndNotify({
+          title: t('updateNotify.title'),
+          body: t('updateNotify.msg'),
+        })
+        .catch(() => {});
     }, 3000);
   }
 

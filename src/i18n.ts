@@ -230,6 +230,11 @@ const ja: TranslationDict = {
   'cmdPalette.customOpt.openFolder': 'ファイル: フォルダを開く...',
   'cmdPalette.customOpt.closeAllFiles': 'ファイル: 全てのタブを強制的に閉じる',
   'cmdPalette.customOpt.openRecent': 'ファイル: 最近使ったファイルを開く...',
+
+  // === アップデート通知 ===
+  'updateNotify.title': 'アップデートの準備ができました',
+  'updateNotify.msg':
+    '{appName}の最新バージョン(v{version})のダウンロードが完了しました。{appName}を終了するか、アップデートボタンをクリックしてアップデートします。',
 };
 
 // 英語の翻訳辞書
@@ -453,6 +458,11 @@ const en: TranslationDict = {
   'cmdPalette.customOpt.openFolder': 'File: Open Folder...',
   'cmdPalette.customOpt.closeAllFiles': 'File: Force Close All Editor Tabs',
   'cmdPalette.customOpt.openRecent': 'File: Open Recent File...',
+
+  // === アップデート通知 ===
+  'updateNotify.title': 'Update is ready to install',
+  'updateNotify.msg':
+    'The latest version of {appName} (v{version}) has been downloaded. To update, please exit {appName} or click the update button.',
 };
 
 // 翻訳辞書のマップ
