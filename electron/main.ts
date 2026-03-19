@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { app, BrowserWindow, ipcMain, dialog, Notification, nativeImage } from 'electron';
 import { autoUpdater } from 'electron-updater';
 import path from 'node:path';
@@ -183,8 +184,33 @@ app.whenReady().then(() => {
   // ==========================================
   // 【追加】自動アップデート機能
   // ==========================================
+  autoUpdater.channel = 'latest';
   autoUpdater.autoDownload = true; // 更新があれば自動で裏でダウンロード
   autoUpdater.autoInstallOnAppQuit = true; // アプリを普通に閉じた時もついでに更新する
+
+  const logPath = path.join(app.getPath('userData'), 'update.log');
+  const appendLog = (level: string, ...args: any[]) => {
+    const time = new Date().toISOString();
+    const message = args
+      .map((a) => (typeof a === 'object' ? JSON.stringify(a) : String(a)))
+      .join(' ');
+    fs.appendFile(logPath, `[${time}] [${level}] ${message}\n`, 'utf-8').catch(() => {});
+  };
+
+  autoUpdater.logger = {
+    info: (...args: any[]) => appendLog('INFO', ...args),
+    warn: (...args: any[]) => appendLog('WARN', ...args),
+    error: (...args: any[]) => appendLog('ERROR', ...args),
+    debug: (...args: any[]) => appendLog('DEBUG', ...args),
+  };
+
+  autoUpdater.on('error', (err) => {
+    const msg = err instanceof Error ? err.stack || err.message : String(err);
+    dialog.showErrorBox(
+      t('updateErrorDialog.title'),
+      `${t('updateErrorDialog.msg1')}\n${logPath}\n${t('updateErrorDialog.msg2')}\n${msg}`
+    );
+  });
 
   // ダウンロードが完了したら、React(画面)側に「ボタンを出して！」と通知する
   autoUpdater.on('update-downloaded', (info) => {

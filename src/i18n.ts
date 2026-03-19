@@ -235,6 +235,12 @@ const ja: TranslationDict = {
   'updateNotify.title': 'アップデートの準備ができました',
   'updateNotify.msg':
     '{appName}の最新バージョン(v{version})のダウンロードが完了しました。{appName}を終了するか、アップデートボタンをクリックしてアップデートします。',
+
+  // === アップデートのエラーダイアログ ===
+  'updateErrorDialog.title': 'アップデートのダウンロードエラー',
+  'updateErrorDialog.msg1':
+    'アップデートをダウンロード中にエラーが発生しました。\nアップデートログを以下のファイルに保存しました:',
+  'updateErrorDialog.msg2': 'エラー内容:',
 };
 
 // 英語の翻訳辞書
@@ -463,6 +469,12 @@ const en: TranslationDict = {
   'updateNotify.title': 'Update is ready to install',
   'updateNotify.msg':
     'The latest version of {appName} (v{version}) has been downloaded. To update, please exit {appName} or click the update button.',
+
+  // === アップデートのエラーダイアログ ===
+  'updateErrorDialog.title': 'Update Download Error',
+  'updateErrorDialog.msg1':
+    'An error occurred while downloading the update.\nThe update log has been saved to the following file:',
+  'updateErrorDialog.msg2': 'Error Message:',
 };
 
 // 翻訳辞書のマップ
