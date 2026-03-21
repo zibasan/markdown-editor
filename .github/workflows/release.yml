@@ -1,6 +1,5 @@
-name: Release Electron App
+name: Release Tauri App
 
-# 「v」から始まるタグ（例: v1.0.1）がプッシュされた時だけ自動実行する
 on:
   push:
     tags:
@@ -10,36 +9,44 @@ jobs:
   release:
     strategy:
       matrix:
-        os: [windows-latest, macos-latest]
-    # Windows版とmacOS版の両方を作る
-    runs-on: ${{  matrix.os  }}
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+          - os: macos-13
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
 
-    # GitHub Releasesにファイルを書き込むための権限
     permissions:
       contents: write
 
     steps:
-      - name: Checkout Code
+      - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v3
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build and publish
+        uses: tauri-apps/tauri-action@v0
         with:
-          version: 10
-
-      - name: Install Dependencies
-        run: pnpm install
-
-      - name: Build and Publish to GitHub Releases
-        # Step 1 で作ったスクリプトを実行
-        run: pnpm run release_app
+          tagName: ${{ github.ref_name }}
+          releaseName: 'Markdown Editor ${{ github.ref_name }}'
+          releaseBody: 'Automated release build from GitHub Actions.'
+          releaseDraft: false
+          prerelease: false
+          args: --target ${{ matrix.target }}
         env:
-          # GitHubが自動発行するワンタイムパスワード。これを使ってReleasesにアップロードする
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # macOSの署名エラーを無視する
           CSC_IDENTITY_AUTO_DISCOVERY: false

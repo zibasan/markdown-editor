@@ -1,0 +1,16 @@
+[package]
+name = "markdown_editor"
+version = "1.1.31"
+description = "Markdown Editor powered by Tauri"
+authors = ["zibasan"]
+license = "MIT"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tauri = { version = "2", features = [] }
+rfd = "0.15"

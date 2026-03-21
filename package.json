@@ -1,30 +1,35 @@
 {
   "name": "markdown-code-editor",
   "private": true,
-  "version": "1.1.3",
+  "version": "1.1.31",
   "author": "zibasan",
-  "main": "dist-electron/main.js",
   "type": "module",
   "scripts": {
     "dev:web": "vite",
-    "dev:app": "cross-env BUILD_TARGET=electron vite",
-    "build:web": "tsc && vite build",
-    "build:app@quick": "tsc && cross-env BUILD_TARGET=electron vite build",
-    "build:app@quick_sil": "tsc && cross-env CI=true BUILD_TARGET=electron vite build",
-    "build:app@install": "electron-builder",
-    "build:app@full": "pnpm run build:app@quick && pnpm run build:app@install",
-    "release_app": "tsc && cross-env BUILD_TARGET=electron vite build && electron-builder --publish always",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix && prettier --write .",
+    "dev:app": "tauri dev",
+    "build": "tsc -b && vite build",
+    "build:web": "tsc -b && vite build",
+    "build:app@quick": "tauri build --no-bundle",
+    "build:app@install": "tauri build",
+    "build:app@full": "bun run build:app@install",
+    "release_app": "tauri build",
     "preview": "vite preview",
-    "prepare": "husky"
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "format": "biome format --write",
+    "lint": "biome lint --write",
+    "biome:check": "biome check",
+    "prepare": "husky",
+    "rustfmt": "cargo fmt --all",
+    "lint-staged": "lint-staged"
   },
   "dependencies": {
+    "@tauri-apps/api": "^2.8.0",
     "@monaco-editor/loader": "^1.7.0",
     "@monaco-editor/react": "^4.7.0",
     "@types/react-syntax-highlighter": "^15.5.13",
     "@vscode/codicons": "^0.0.44",
-    "electron-updater": "^6.8.3",
     "lucide-react": "^0.577.0",
     "monaco-editor": "^0.55.1",
     "monaco-editor-textmate": "^4.0.0",
@@ -39,87 +44,18 @@
     "vscode-textmate": "^9.3.2"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@stylistic/eslint-plugin": "^5.10.0",
+    "@biomejs/biome": "2.4.8",
+    "@tailwindcss/vite": "^4.1.14",
+    "@tauri-apps/cli": "^2.8.0",
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "@typescript-eslint/eslint-plugin": "^8.56.1",
-    "@typescript-eslint/parser": "^8.56.1",
     "@vitejs/plugin-react": "^5.1.1",
-    "cross-env": "^10.1.0",
-    "electron": "^40.8.0",
-    "electron-builder": "^26.8.1",
-    "eslint": "^9.39.1",
-    "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-prettier": "^5.5.5",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "eslint-plugin-react-refresh": "^0.4.24",
-    "globals": "^16.5.0",
     "husky": "^9.1.7",
     "lint-staged": "^16.3.2",
-    "prettier": "^3.8.1",
+    "tailwindcss": "^4.1.14",
     "typescript": "~5.9.3",
-    "typescript-eslint": "^8.48.0",
-    "vite": "^7.3.1",
-    "vite-plugin-electron": "^0.29.0",
-    "vite-plugin-electron-renderer": "^0.14.6"
+    "vite": "^7.3.1"
   },
-  "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint . --fix",
-      "prettier --write ."
-    ],
-    "*.{json,css,md,html}": [
-      "prettier --write ."
-    ]
-  },
-  "build": {
-    "appId": "com.zibasan.markdowneditor",
-    "productName": "Markdown Editor",
-    "copyright": "Copyright © 2026 zibasan",
-    "directories": {
-      "output": "release/"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "perMachine": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Markdown Editor",
-      "displayLanguageSelector": true,
-      "multiLanguageInstaller": true,
-      "license": "build/license.txt",
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico",
-      "include": "build/installer.nsh"
-    },
-    "files": [
-      "dist/**/*",
-      "dist-electron/**/*"
-    ],
-    "extraResources": [
-      {
-        "from": "build/icon.ico",
-        "to": "icon.ico"
-      }
-    ],
-    "mac": {
-      "target": "dmg",
-      "icon": "build/icon.icns"
-    },
-    "win": {
-      "target": "nsis",
-      "icon": "build/icon.ico"
-    },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "zibasan",
-        "repo": "markdown-editor"
-      }
-    ]
-  }
+  "packageManager": "bun@1.3.7"
 }

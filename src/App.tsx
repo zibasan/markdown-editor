@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import React, { useRef, useState, useEffect, useMemo } from 'react';
 import loader from '@monaco-editor/loader';
 import type { Monaco } from '@monaco-editor/react';
-import type { editor } from 'monaco-editor';
+import type { editor, IPosition, IRange, languages } from 'monaco-editor';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import 'remark-github-blockquote-alert/alert.css';
 import './index.css';
 import logoImage from './assets/logo.svg';
@@ -12,9 +11,9 @@ import { QuickPickLayer } from './components/app/QuickPickLayer';
 import { SidebarPanel } from './components/app/SidebarPanel';
 import { StatusBar } from './components/app/StatusBar';
 import { TitleBar } from './components/app/TitleBar';
+import { createT } from './i18n';
 import type { EditorFile, EditorSettings, OutlineItem } from './types';
 import { DEFAULT_SETTINGS } from './types';
-import { createT } from './i18n';
 import {
   getFileSourceSignature,
   getLanguageFromFilename,
@@ -26,9 +25,55 @@ import { FILE_SESSION_STORAGE_KEY, readPersistedEditorState } from './utils/edit
 type Theme = 'system' | 'light' | 'dark';
 type SidebarTab = 'explorer' | 'outline' | 'docs';
 type RecentFileEntry = { path: string; name: string };
+type UndoRedoCapableModel = editor.ITextModel & {
+  canUndo?: () => boolean;
+  canRedo?: () => boolean;
+};
+type MonacoLanguageOption = {
+  id: string;
+  aliases?: string[];
+};
+type AppContainerStyle = React.CSSProperties & {
+  '--editor-empty-text': string;
+};
 
 const RECENT_FILES_STORAGE_KEY = 'editor_recent_files';
 const MAX_RECENT_FILES = 10;
+
+const isAbortError = (error: unknown): error is { name: string } => {
+  return typeof error === 'object' && error !== null && 'name' in error;
+};
+
+const isFileSystemFileHandle = (value: unknown): value is FileSystemFileHandle => {
+  if (typeof value !== 'object' || value === null) {
+    return false;
+  }
+  const candidate = value as {
+    kind?: unknown;
+    name?: unknown;
+    getFile?: unknown;
+    createWritable?: unknown;
+    isSameEntry?: unknown;
+  };
+
+  return (
+    candidate.kind === 'file' &&
+    typeof candidate.name === 'string' &&
+    typeof candidate.getFile === 'function' &&
+    typeof candidate.createWritable === 'function' &&
+    typeof candidate.isSameEntry === 'function'
+  );
+};
+
+const getLanguageAliases = (lang: { aliases?: unknown }): string[] | undefined => {
+  if (!Array.isArray(lang.aliases)) {
+    return undefined;
+  }
+
+  const aliases = lang.aliases.filter((value): value is string => typeof value === 'string');
+
+  return aliases.length > 0 ? aliases : undefined;
+};
 
 // Monaco Editor の言語パック初期設定（動的に変更するには再読み込みが必要）
 function configureMonacoLocale(lang: 'ja' | 'en') {
@@ -61,9 +106,9 @@ function App() {
   const monacoRef = useRef<Monaco | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounter = useRef(0);
-  const handleSaveRef = useRef<() => void>(() => {});
+  const handleSaveRef = useRef<() => void>(() => undefined);
   const activeFileIdRef = useRef('');
-  const knownFileHandlesRef = useRef<Record<string, any>>({});
+  const knownFileHandlesRef = useRef<Record<string, FileSystemFileHandle>>({});
   const [historyStateByFile, setHistoryStateByFile] = useState<
     Record<string, { canUndo: boolean; canRedo: boolean }>
   >({});
@@ -359,14 +404,14 @@ function App() {
     },
     [isElectron]
   );
-  const rememberFileHandle = React.useCallback((handle: any) => {
-    if (handle?.name) {
+  const rememberFileHandle = React.useCallback((handle: unknown) => {
+    if (isFileSystemFileHandle(handle)) {
       knownFileHandlesRef.current[handle.name] = handle;
     }
   }, []);
 
   const updateHistoryAvailability = React.useCallback((fileId: string) => {
-    const model = editorRef.current?.getModel() as any;
+    const model = editorRef.current?.getModel() as UndoRedoCapableModel | null;
     const nextCanUndo = Boolean(model?.canUndo?.());
     const nextCanRedo = Boolean(model?.canRedo?.());
 
@@ -415,9 +460,12 @@ function App() {
     );
   }, []);
 
-  const findOpenFileByHandle = React.useCallback(async (targetHandle: any) => {
+  const findOpenFileByHandle = React.useCallback(async (targetHandle: unknown) => {
+    if (!isFileSystemFileHandle(targetHandle)) {
+      return null;
+    }
     for (const openFile of filesRef.current) {
-      if (!openFile.handle?.isSameEntry) continue;
+      if (!isFileSystemFileHandle(openFile.handle)) continue;
       try {
         if (await openFile.handle.isSameEntry(targetHandle)) {
           return openFile;
@@ -619,8 +667,8 @@ function App() {
       setFiles((prev) => [...prev, newFile]);
       activateFile(newFileId);
       setActiveMenu(null);
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
+    } catch (err: unknown) {
+      if (!isAbortError(err) || err.name !== 'AbortError') {
         console.error(err);
         notifyUser(t('status.errorOpenFile') || 'ファイルの読み込みに失敗しました。');
       }
@@ -688,7 +736,7 @@ function App() {
 
   useEffect(() => {
     if (!isElectron || !window.electronAPI?.onOpenFile) return;
-    const unsubscribe = window.electronAPI.onOpenFile((filePath) => {
+    const unsubscribe = window.electronAPI.onOpenFile((filePath: string) => {
       openFileFromPath(filePath);
     });
 
@@ -697,11 +745,11 @@ function App() {
     };
   }, [isElectron, openFileFromPath]);
 
-  const openNewFilePalette = () => {
+  const openNewFilePalette = React.useCallback(() => {
     setNewFileNameInput('');
     setShowNewFilePalette(true);
     setActiveMenu(null);
-  };
+  }, []);
 
   const getIsDirty = (file: EditorFile) => {
     if (file.needsSaveAs) return true;
@@ -760,14 +808,14 @@ function App() {
         // 【Web（GitHub Pages）版の保存処理】 ※今までのコードそのまま
         // ==========================================
         let handle = activeFile.handle;
-        if (!handle || typeof handle === 'string') {
+        if (!isFileSystemFileHandle(handle)) {
           const knownHandle = knownFileHandlesRef.current[activeFile.name];
           if (knownHandle) {
             handle = knownHandle;
           }
         }
 
-        if (!handle || typeof handle === 'string') {
+        if (!isFileSystemFileHandle(handle)) {
           try {
             // @ts-expect-error: File System Access API
             handle = await window.showSaveFilePicker({
@@ -782,10 +830,14 @@ function App() {
                 },
               ],
             });
-          } catch (err: any) {
-            if (err.name === 'AbortError') return;
+          } catch (err: unknown) {
+            if (isAbortError(err) && err.name === 'AbortError') return;
             throw err;
           }
+        }
+
+        if (!isFileSystemFileHandle(handle)) {
+          throw new Error('Failed to resolve file handle');
         }
 
         let fileExists = true;
@@ -830,7 +882,7 @@ function App() {
         rememberFileHandle(handle);
         setActiveMenu(null);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       notifyUser(t('status.errorSaveFile') || '保存に失敗しました。');
     }
@@ -841,13 +893,13 @@ function App() {
     handleSaveRef.current = handleSave;
   }, [handleSave]);
 
-  const resetChord = () => {
+  const resetChord = React.useCallback(() => {
     setIsChordWaiting(false);
     if (chordTimeoutRef.current) {
       clearTimeout(chordTimeoutRef.current);
       chordTimeoutRef.current = null;
     }
-  };
+  }, []);
 
   const confirmCreateFile = async () => {
     let fileName = newFileNameInput.trim();
@@ -911,8 +963,8 @@ function App() {
       if (editorRef.current) {
         editorRef.current.focus();
       }
-    } catch (err: any) {
-      if (err.name !== 'AbortError') {
+    } catch (err: unknown) {
+      if (!isAbortError(err) || err.name !== 'AbortError') {
         console.error(err);
         notifyUser(t('status.errorSaveFile') || 'ファイルの作成に失敗しました。');
       }
@@ -1024,7 +1076,14 @@ function App() {
     window.addEventListener('keydown', handleGlobalKeyDown);
 
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isChordWaiting, handleSave, openFileFromDisk, triggerCommandPalette]); // isChordWaiting や handleSave, openFileFromDisk の変化を検知する必要がある
+  }, [
+    isChordWaiting,
+    handleSave,
+    openFileFromDisk,
+    triggerCommandPalette,
+    openNewFilePalette,
+    resetChord,
+  ]); // isChordWaiting や handleSave, openFileFromDisk の変化を検知する必要がある
 
   // === ペインリサイズ用のイベントハンドラ定義 ===
   // サイドバーの幅変更
@@ -1151,7 +1210,7 @@ function App() {
     // === スラッシュコマンド（スニペット補完）の登録 ===
     monacoInstance.languages.registerCompletionItemProvider('markdown', {
       triggerCharacters: ['/'], // '/' をトリガーとして補完メニューを開く
-      provideCompletionItems: (model: any, position: any) => {
+      provideCompletionItems: (model: editor.ITextModel, position: IPosition) => {
         // カーソル位置までのテキストを取得
         const textUntilPosition = model.getValueInRange({
           startLineNumber: position.lineNumber,
@@ -1429,7 +1488,7 @@ function App() {
           [/^(\s*[-+*]|\s*\d+\.)\s/, 'keyword.md'],
         ],
       },
-    } as any);
+    } satisfies languages.IMonarchLanguage);
   };
 
   // === エディターがマウントされたイベントハンドラ ===
@@ -1475,29 +1534,35 @@ function App() {
     });
 
     // サポートされている言語（MarkdownとPlain Text）のみをフィルタリングして取得
-    const langs = monacoInstance.languages.getLanguages();
-    let filtered = langs.filter(
-      (l: any) =>
-        l.id.toLowerCase() === 'markdown' ||
-        l.id.toLowerCase() === 'plaintext' ||
-        (l.aliases &&
-          l.aliases.some(
-            (a: string) => a.toLowerCase() === 'markdown' || a.toLowerCase() === 'plain text'
-          ))
-    );
+    const langs: Array<{ id: string; aliases?: unknown }> = monacoInstance.languages.getLanguages();
+    let filtered: MonacoLanguageOption[] = langs
+      .map((lang: { id: string; aliases?: unknown }) => ({
+        id: lang.id,
+        aliases: getLanguageAliases(lang),
+      }))
+      .filter(
+        (lang: MonacoLanguageOption) =>
+          lang.id.toLowerCase() === 'markdown' ||
+          lang.id.toLowerCase() === 'plaintext' ||
+          (lang.aliases &&
+            lang.aliases.some(
+              (alias: string) =>
+                alias.toLowerCase() === 'markdown' || alias.toLowerCase() === 'plain text'
+            ))
+      );
 
     // 万が一フィルタリングで何も取得できなかった場合のフォールバック
     if (filtered.length === 0) {
       filtered = [
         { id: 'markdown', aliases: ['Markdown'] },
         { id: 'plaintext', aliases: ['Plain Text'] },
-      ] as any;
+      ];
     }
 
     setAvailableLanguages(
-      filtered.map((l: any) => ({
-        id: l.id,
-        aliases: (l as any).aliases, // Monaco公式型定義にaliasesがない場合があるため一時的にキャスト
+      filtered.map((lang) => ({
+        id: lang.id,
+        aliases: lang.aliases,
       }))
     );
     const model = editorInstance.getModel();
@@ -1803,7 +1868,7 @@ function App() {
       };
       setFiles((prev) => [...prev, newFile]);
       activateFile(newFileId);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
       // フォールバック
       const file = e.dataTransfer.files[0];
@@ -1886,7 +1951,7 @@ function App() {
         // 保存して閉じる
         try {
           const handle = fileToClose.handle;
-          if (handle) {
+          if (isFileSystemFileHandle(handle)) {
             let closeFileExists = true;
             try {
               await handle.getFile();
@@ -1986,7 +2051,7 @@ function App() {
     const model = editor.getModel();
     if (!model) return;
 
-    let targetRange: any = selection;
+    let targetRange: IRange = selection;
     let actualPrefix = prefix;
 
     if (insertOnNewLine) {
@@ -2241,20 +2306,20 @@ function App() {
     configureMonacoLocale(lang);
   };
 
+  const appContainerStyle: AppContainerStyle = {
+    transform: `scale(${appScale})`,
+    transformOrigin: 'top left',
+    width: appScale < 1 ? `calc(100vw / ${appScale})` : '100vw',
+    height: appScale < 1 ? `calc(100vh / ${appScale})` : '100vh',
+    overflow: 'hidden',
+    '--editor-empty-text': `"${
+      t('editor.placeholder') ||
+      "You can add Markdown syntax from the toolbar above, or add it inline by start typing '/'."
+    }"`,
+  };
+
   return (
-    <div
-      className="app-container"
-      style={
-        {
-          transform: `scale(${appScale})`,
-          transformOrigin: 'top left',
-          width: appScale < 1 ? `calc(100vw / ${appScale})` : '100vw',
-          height: appScale < 1 ? `calc(100vh / ${appScale})` : '100vh',
-          overflow: 'hidden',
-          '--editor-empty-text': `"${t('editor.placeholder') || "You can add Markdown syntax from the toolbar above, or add it inline by start typing '/'."}"`,
-        } as any
-      }
-    >
+    <div className="app-container min-h-screen" style={appContainerStyle}>
       <TitleBar
         t={t}
         effectiveMenuBarMode={effectiveMenuBarMode}

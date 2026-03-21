@@ -8,7 +8,7 @@ export interface EditorFile {
   sourceSignature?: string;
   language?: string; // 動的言語用のプロパティ
   isSettings?: boolean;
-  handle?: any; // eslint-disable-line
+  handle?: string | FileSystemFileHandle;
   // FileSystemFileHandle: File System Access API 用
 }
 
@@ -60,6 +60,23 @@ export const DEFAULT_SETTINGS: EditorSettings = {
 };
 
 export interface ElectronAPI {
-  onUpdateDownloaded?: (callback: (version: string) => void) => void;
-  installUpdate?: () => Promise<void>;
+  saveFile: (content: string, defaultPath?: string) => Promise<string | null>;
+  openFileDialog: () => Promise<{ path: string; name: string; content: string } | null>;
+  openFilePath: (
+    filePath: string
+  ) => Promise<{ path: string; name: string; content: string } | null>;
+  openFolderDialog: (mode?: 'open' | 'create') => Promise<{
+    folderPath: string;
+    files: { path: string; name: string; content: string }[];
+  } | null>;
+  showAbout: () => Promise<boolean>;
+  registerFileAssociation: () => Promise<boolean>;
+  unregisterFileAssociation: () => Promise<boolean>;
+  notify: (title: string, body?: string) => void;
+  onOpenFile: (callback: (filePath: string) => void) => () => void;
+  minimize: () => void;
+  maximize: () => void;
+  close: () => void;
+  onUpdateDownloaded: (callback: (version: string) => void) => void;
+  installUpdate: () => Promise<void>;
 }
