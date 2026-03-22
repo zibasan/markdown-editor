@@ -1,73 +1,104 @@
-# React + TypeScript + Vite
+# markdown-editor
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Fast Markdown editor with Monaco, split preview, and desktop packaging via Tauri.
 
-Currently, two official plugins are available:
+![tauri](https://img.shields.io/badge/runtime-tauri%20v2-1f2937?logo=tauri&logoColor=ffc131)
+![react](https://img.shields.io/badge/frontend-react%2019-1f2937?logo=react)
+![typescript](https://img.shields.io/badge/lang-typescript%205.9-1f2937?logo=typescript)
+![bun](https://img.shields.io/badge/pm-bun-1f2937)
+![license](https://img.shields.io/badge/license-MIT-1f2937)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+This repository is now on a Tauri-first track. Electron runtime code remains only as migration reference.
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Monaco-based Markdown editing with slash commands
+- Split live preview
+- Explorer / Outline / Docs side panel
+- Recent file support and folder import
+- Theme/language switching (ja/en)
+- Desktop build targets: Windows + macOS (x64, arm64)
 
-## Expanding the ESLint configuration
+## Table Of Contents
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [Commands](#commands)
+- [Release Automation](#release-automation)
+- [Migration Status](#migration-status)
+- [Safety](#safety)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Installation
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+1) Install dependencies
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+```bash
+bun install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+2) Rust toolchain for Tauri build
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x';
-import reactDom from 'eslint-plugin-react-dom';
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+```bash
+rustup update
 ```
+
+## Quick Start
+
+```bash
+# Web only
+bun run dev:web
+
+# Tauri desktop app
+bun run dev:app
+
+# Production web build
+bun run build:web
+
+# Tauri desktop build (bundle)
+bun run build:app@install
+```
+
+## Commands
+
+- `bun run dev:web`
+- `bun run dev:app`
+- `bun run build:web`
+- `bun run build:app@quick`
+- `bun run build:app@install`
+- `bun run build:app@full`
+- `bun run release_app`
+- `bun run lint`
+- `bun run biome:check`
+
+## Release Automation
+
+Release workflow file:
+
+- `.github/workflows/release.yml`
+
+Behavior:
+
+1. Push tag `v*`
+2. Workflow uses Bun + Tauri action
+3. Builds matrix targets:
+- `x86_64-pc-windows-msvc`
+- `x86_64-apple-darwin`
+- `aarch64-apple-darwin`
+4. Uploads artifacts to GitHub Releases
+
+## Migration Status
+
+- Runtime switched to Tauri v2
+- CI switched from pnpm to Bun
+- Tailwind CSS integrated into Vite pipeline
+- Detailed requirements are defined in [docs/requirements.md](docs/requirements.md)
+
+## Safety
+
+- This phase ships unsigned builds (code signing/notarization is out of scope)
+- File association write is best-effort and platform-dependent
+- Folder import intentionally limits to `.md` and `.txt`
+
+## License
+
+MIT License

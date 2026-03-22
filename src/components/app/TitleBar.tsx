@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Check, Monitor, Moon, Search, Sun, Download } from 'lucide-react';
+import { Check, Download, Monitor, Moon, Search, Sun } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
 
 import type { EditorSettings } from '../../types';
 
@@ -81,7 +81,7 @@ export function TitleBar({
   // 【追加】ダウンロード完了通知を受け取る
   useEffect(() => {
     if (isElectron && window.electronAPI?.onUpdateDownloaded) {
-      window.electronAPI.onUpdateDownloaded((version) => {
+      window.electronAPI.onUpdateDownloaded((version: string) => {
         setUpdateReadyVersion(version);
       });
     }

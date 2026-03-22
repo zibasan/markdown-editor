@@ -1,17 +1,16 @@
-import { useMemo, useState } from 'react';
-import Editor from '@monaco-editor/react';
 import type { Monaco } from '@monaco-editor/react';
-import type { editor } from 'monaco-editor';
+import Editor from '@monaco-editor/react';
 import { Check, ChevronDown, ChevronUp, RotateCcw, Settings, X } from 'lucide-react';
+import type { editor } from 'monaco-editor';
+import { useMemo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus, vs } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { vs, vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import rehypeRaw from 'rehype-raw';
 import remarkGfm from 'remark-gfm';
 import { remarkAlert } from 'remark-github-blockquote-alert';
-import rehypeRaw from 'rehype-raw';
-
-import { Toolbar } from '../Toolbar';
 import type { EditorFile, EditorSettings } from '../../types';
+import { Toolbar } from '../Toolbar';
 
 type ActiveTheme = 'light' | 'dark';
 
