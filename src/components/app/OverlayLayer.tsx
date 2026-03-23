@@ -36,8 +36,8 @@ export function OverlayLayer({
   return (
     <>
       {isDraggingOver && (
-        <div className="drag-overlay">
-          <div className="drag-overlay-content">
+        <div className='drag-overlay'>
+          <div className='drag-overlay-content'>
             <FolderOpen size={48} />
             <span>{t('dnd.drop')}</span>
           </div>
@@ -46,7 +46,7 @@ export function OverlayLayer({
 
       {contextMenu && (
         <div
-          className="context-menu-overlay"
+          className='context-menu-overlay'
           onClick={() => setContextMenu(null)}
           onContextMenu={(e) => {
             e.preventDefault();
@@ -54,16 +54,16 @@ export function OverlayLayer({
           }}
         >
           <div
-            className="context-menu"
+            className='context-menu'
             style={{ top: contextMenu.y, left: contextMenu.x }}
             onClick={(e) => e.stopPropagation()}
           >
             {contextMenu.fileId ? (
               <>
-                <div className="context-menu-item" onClick={handleContextOpen}>
+                <div className='context-menu-item' onClick={handleContextOpen}>
                   {t('context.open')}
                 </div>
-                <div className="context-menu-separator" />
+                <div className='context-menu-separator' />
                 <div
                   className={`context-menu-item ${filesLength <= 1 ? 'disabled' : 'danger'}`}
                   onClick={filesLength > 1 ? handleContextDelete : undefined}
@@ -74,7 +74,7 @@ export function OverlayLayer({
             ) : (
               <>
                 <div
-                  className="context-menu-item"
+                  className='context-menu-item'
                   onClick={() => {
                     openNewFilePalette();
                     setContextMenu(null);
@@ -83,7 +83,7 @@ export function OverlayLayer({
                   {t('context.newFile')}
                 </div>
                 <div
-                  className="context-menu-item"
+                  className='context-menu-item'
                   onClick={() => {
                     openFileFromDisk();
                     setContextMenu(null);
@@ -98,10 +98,10 @@ export function OverlayLayer({
       )}
 
       <input
-        type="file"
+        type='file'
         ref={fileInputRef}
         onChange={handleFileOpen}
-        accept="*/*"
+        accept='*/*'
         style={{ display: 'none' }}
       />
     </>

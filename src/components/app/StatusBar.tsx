@@ -22,19 +22,19 @@ export function StatusBar({
   activeFileLanguage,
 }: StatusBarProps) {
   return (
-    <footer className="status-bar">
-      <div className="status-bar-left">
-        {isChordWaiting && <div className="status-bar-item">{t('status.chordWaiting')}</div>}
+    <footer className='status-bar'>
+      <div className='status-bar-left'>
+        {isChordWaiting && <div className='status-bar-item'>{t('status.chordWaiting')}</div>}
       </div>
 
-      <div className="status-bar-right">
+      <div className='status-bar-right'>
         {selectionCount > 0 && (
-          <div className="status-bar-item">
+          <div className='status-bar-item'>
             {selectionCount} {t('status.charSelected')}
           </div>
         )}
         <div
-          className="status-bar-item highlight"
+          className='status-bar-item highlight'
           style={{ cursor: 'pointer' }}
           title={t('status.gotoLine')}
           onClick={onGotoLine}
@@ -42,16 +42,16 @@ export function StatusBar({
           {t('status.line')} {cursorPos.line}, {t('status.col')} {cursorPos.column}
         </div>
         <div
-          className="status-bar-item"
+          className='status-bar-item'
           onClick={toggleEol}
           style={{ cursor: 'pointer' }}
           data-tooltip={t('status.eolTooltip')}
         >
           {eolMode}
         </div>
-        <div className="status-bar-item">UTF-8</div>
+        <div className='status-bar-item'>UTF-8</div>
         <span
-          className="status-bar-item highlight"
+          className='status-bar-item highlight'
           onClick={openLanguagePalette}
           data-tooltip={t('status.langMode')}
         >

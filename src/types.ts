@@ -61,7 +61,11 @@ export const DEFAULT_SETTINGS: EditorSettings = {
 
 export interface ElectronAPI {
   saveFile: (content: string, defaultPath?: string) => Promise<string | null>;
-  openFileDialog: () => Promise<{ path: string; name: string; content: string } | null>;
+  openFileDialog: () => Promise<{
+    path: string;
+    name: string;
+    content: string;
+  } | null>;
   openFilePath: (
     filePath: string
   ) => Promise<{ path: string; name: string; content: string } | null>;

@@ -1,7 +1,4 @@
 @import "tailwindcss";
-@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600&family=Roboto:wght@400;500;700&family=Noto+Sans+JP:wght@400;500;700&family=M+PLUS+1p:wght@400;500;700&family=Roboto+Mono:wght@400;500&family=Source+Code+Pro:wght@400;500&family=BIZ+UDGothic:wght@400;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=LINE+Seed+JP&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:FILL@0");
 
 .line-seed-jp-regular {
   font-family: "LINE Seed JP", sans-serif;
