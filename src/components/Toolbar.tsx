@@ -91,11 +91,11 @@ export function Toolbar({
   const isMenuVisible = isMarkdownMode && !enableDiscordMarkdown && showAlertMenu;
 
   return (
-    <div className="editor-toolbar">
-      <div className="toolbar-inner">
-        <div className="toolbar-group">
+    <div className='editor-toolbar'>
+      <div className='toolbar-inner'>
+        <div className='toolbar-group'>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             onClick={onUndo}
             disabled={!canUndo}
             data-tooltip={t('toolbar.undo')}
@@ -103,7 +103,7 @@ export function Toolbar({
             <Undo size={16} />
           </button>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             onClick={onRedo}
             disabled={!canRedo}
             data-tooltip={t('toolbar.redo')}
@@ -112,11 +112,11 @@ export function Toolbar({
           </button>
         </div>
 
-        <div className="toolbar-separator" />
+        <div className='toolbar-separator' />
 
-        <div className="toolbar-group">
+        <div className='toolbar-group'>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('**', '**', t('toolbar.sample.bold'))}
             data-tooltip={t('toolbar.bold')}
@@ -124,7 +124,7 @@ export function Toolbar({
             <Bold size={16} />
           </button>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('*', '*', t('toolbar.sample.italic'))}
             data-tooltip={t('toolbar.italic')}
@@ -132,7 +132,7 @@ export function Toolbar({
             <Italic size={16} />
           </button>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('~~', '~~', t('toolbar.sample.strike'))}
             data-tooltip={t('toolbar.strike')}
@@ -141,11 +141,11 @@ export function Toolbar({
           </button>
         </div>
 
-        <div className="toolbar-separator" />
+        <div className='toolbar-separator' />
 
-        <div className="toolbar-group">
+        <div className='toolbar-group'>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('# ', '', t('toolbar.sample.heading1'))}
             data-tooltip={t('toolbar.heading1')}
@@ -153,7 +153,7 @@ export function Toolbar({
             <Heading1 size={16} />
           </button>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('## ', '', t('toolbar.sample.heading2'))}
             data-tooltip={t('toolbar.heading2')}
@@ -161,7 +161,7 @@ export function Toolbar({
             <Heading2 size={16} />
           </button>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('### ', '', t('toolbar.sample.heading3'))}
             data-tooltip={t('toolbar.heading3')}
@@ -169,7 +169,7 @@ export function Toolbar({
             <Heading3 size={16} />
           </button>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode || isDiscordRestricted}
             onClick={() => onInsertMarkdown('#### ', '', t('toolbar.sample.heading4'))}
             data-tooltip={t('toolbar.heading4')}
@@ -177,7 +177,7 @@ export function Toolbar({
             <Heading4 size={16} />
           </button>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode || isDiscordRestricted}
             onClick={() => onInsertMarkdown('##### ', '', t('toolbar.sample.heading5'))}
             data-tooltip={t('toolbar.heading5')}
@@ -185,7 +185,7 @@ export function Toolbar({
             <Heading5 size={16} />
           </button>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode || isDiscordRestricted}
             onClick={() => onInsertMarkdown('###### ', '', t('toolbar.sample.heading6'))}
             data-tooltip={t('toolbar.heading6')}
@@ -194,11 +194,11 @@ export function Toolbar({
           </button>
         </div>
 
-        <div className="toolbar-separator" />
+        <div className='toolbar-separator' />
 
-        <div className="toolbar-group">
+        <div className='toolbar-group'>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('- ', '', t('toolbar.sample.list'))}
             data-tooltip={t('toolbar.bulletList')}
@@ -206,7 +206,7 @@ export function Toolbar({
             <List size={16} />
           </button>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('1. ', '', t('toolbar.sample.list'))}
             data-tooltip={t('toolbar.numberList')}
@@ -214,7 +214,7 @@ export function Toolbar({
             <ListOrdered size={16} />
           </button>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode || isDiscordRestricted}
             onClick={() => onInsertMarkdown('- [ ] ', '', t('toolbar.sample.task'))}
             data-tooltip={t('toolbar.taskList')}
@@ -223,11 +223,11 @@ export function Toolbar({
           </button>
         </div>
 
-        <div className="toolbar-separator" />
+        <div className='toolbar-separator' />
 
-        <div className="toolbar-group">
+        <div className='toolbar-group'>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('> ', '', t('toolbar.sample.quote'))}
             data-tooltip={t('toolbar.quote')}
@@ -244,9 +244,9 @@ export function Toolbar({
               <AlertTriangle size={16} />
             </button>
             {isMenuVisible && (
-              <div className="alert-popup-menu">
+              <div className='alert-popup-menu'>
                 <button
-                  className="toolbar-btn"
+                  className='toolbar-btn'
                   disabled={!isMarkdownMode}
                   onClick={() => insertAlert('NOTE')}
                   data-tooltip={t('toolbar.alertNote')}
@@ -255,7 +255,7 @@ export function Toolbar({
                   <Info size={16} />
                 </button>
                 <button
-                  className="toolbar-btn"
+                  className='toolbar-btn'
                   disabled={!isMarkdownMode}
                   onClick={() => insertAlert('TIP')}
                   data-tooltip={t('toolbar.alertTip')}
@@ -264,7 +264,7 @@ export function Toolbar({
                   <Lightbulb size={16} />
                 </button>
                 <button
-                  className="toolbar-btn"
+                  className='toolbar-btn'
                   disabled={!isMarkdownMode}
                   onClick={() => insertAlert('IMPORTANT')}
                   data-tooltip={t('toolbar.alertImportant')}
@@ -273,7 +273,7 @@ export function Toolbar({
                   <MessageCircleWarning size={16} />
                 </button>
                 <button
-                  className="toolbar-btn"
+                  className='toolbar-btn'
                   disabled={!isMarkdownMode}
                   onClick={() => insertAlert('WARNING')}
                   data-tooltip={t('toolbar.alertWarning')}
@@ -282,7 +282,7 @@ export function Toolbar({
                   <AlertTriangle size={16} />
                 </button>
                 <button
-                  className="toolbar-btn"
+                  className='toolbar-btn'
                   disabled={!isMarkdownMode}
                   onClick={() => insertAlert('CAUTION')}
                   data-tooltip={t('toolbar.alertCaution')}
@@ -295,11 +295,11 @@ export function Toolbar({
           </div>
         </div>
 
-        <div className="toolbar-separator" />
+        <div className='toolbar-separator' />
 
-        <div className="toolbar-group">
+        <div className='toolbar-group'>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('`', '`', t('toolbar.sample.inlineCode'))}
             data-tooltip={t('toolbar.inlineCode')}
@@ -307,7 +307,7 @@ export function Toolbar({
             <CodeXml size={16} />
           </button>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('```\n', '\n```', t('toolbar.sample.codeBlock'))}
             data-tooltip={t('toolbar.codeBlock')}
@@ -315,7 +315,7 @@ export function Toolbar({
             <Code size={16} />
           </button>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode || isDiscordRestricted}
             onClick={() => onInsertMarkdown('\n---\n', '', '', true)}
             data-tooltip={t('toolbar.horizontalRule')}
@@ -323,7 +323,7 @@ export function Toolbar({
             <Minus size={16} />
           </button>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode || isDiscordRestricted}
             onClick={() =>
               onInsertMarkdown(
@@ -338,11 +338,11 @@ export function Toolbar({
           </button>
         </div>
 
-        <div className="toolbar-separator" />
+        <div className='toolbar-separator' />
 
-        <div className="toolbar-group">
+        <div className='toolbar-group'>
           <button
-            className="toolbar-btn"
+            className='toolbar-btn'
             disabled={!isMarkdownMode}
             onClick={() => onInsertMarkdown('[', '](https://)', t('toolbar.sample.link'))}
             data-tooltip={t('toolbar.link')}
@@ -351,14 +351,14 @@ export function Toolbar({
           </button>
         </div>
 
-        <div className="toolbar-separator" />
-        <div className="toolbar-group">
-          <button className="toolbar-btn" onClick={onSave} data-tooltip={t('toolbar.save')}>
+        <div className='toolbar-separator' />
+        <div className='toolbar-group'>
+          <button className='toolbar-btn' onClick={onSave} data-tooltip={t('toolbar.save')}>
             <Save size={16} />
           </button>
         </div>
 
-        <div className="toolbar-group" style={{ marginLeft: 'auto' }}>
+        <div className='toolbar-group' style={{ marginLeft: 'auto' }}>
           <button
             className={`toolbar-btn ${showPreview ? 'active' : ''}`}
             onClick={onTogglePreview}
@@ -371,22 +371,22 @@ export function Toolbar({
       </div>
 
       {enableDiscordMarkdown && (
-        <div className="toolbar-inner toolbar-inner-discord">
-          <div className="toolbar-discord-label">{t('toolbar.discordLabel')}</div>
-          <div className="toolbar-separator" />
-          <div className="toolbar-group">
+        <div className='toolbar-inner toolbar-inner-discord'>
+          <div className='toolbar-discord-label'>{t('toolbar.discordLabel')}</div>
+          <div className='toolbar-separator' />
+          <div className='toolbar-group'>
             <button
-              className="toolbar-btn"
+              className='toolbar-btn'
               disabled={!isMarkdownMode}
               onClick={() => onInsertMarkdown('-# ', '', t('toolbar.sample.discordSubtext'), true)}
               data-tooltip={t('toolbar.discordSubtext')}
             >
-              <span className="setting-material-icon toolbar-material-icon" aria-hidden="true">
+              <span className='setting-material-icon toolbar-material-icon' aria-hidden='true'>
                 short_text
               </span>
             </button>
             <button
-              className="toolbar-btn"
+              className='toolbar-btn'
               disabled={!isMarkdownMode}
               onClick={() => onInsertMarkdown('__', '__', t('toolbar.sample.discordUnderline'))}
               data-tooltip={t('toolbar.discordUnderline')}
@@ -394,7 +394,7 @@ export function Toolbar({
               <Underline size={16} />
             </button>
             <button
-              className="toolbar-btn"
+              className='toolbar-btn'
               disabled={!isMarkdownMode}
               onClick={() => onInsertMarkdown('||', '||', t('toolbar.sample.discordSpoiler'))}
               data-tooltip={t('toolbar.discordSpoiler')}

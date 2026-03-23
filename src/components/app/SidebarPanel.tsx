@@ -21,7 +21,7 @@ const renderFileTypeIcon = (filename: string, size = 14) => {
     <span
       className={`file-codicon ${iconClass}`}
       style={{ fontSize: `${size}px` }}
-      aria-hidden="true"
+      aria-hidden='true'
     />
   );
 };
@@ -119,11 +119,11 @@ export function SidebarPanel({
 }: SidebarPanelProps) {
   return (
     <>
-      <div className="activity-bar">
+      <div className='activity-bar'>
         {effectiveMenuBarMode === 'compact' && (
           <div style={{ position: 'relative' }}>
             <div
-              className="activity-icon"
+              className='activity-icon'
               data-tooltip-right={t('menu.compact.tooltip')}
               onClick={(e) => {
                 e.stopPropagation();
@@ -136,13 +136,13 @@ export function SidebarPanel({
                 }
               }}
             >
-              <span className="activity-material-icon" aria-hidden="true">
+              <span className='activity-material-icon' aria-hidden='true'>
                 menu
               </span>
             </div>
             {hamburgerMenu && (
               <div
-                className="context-menu hamburger-context-menu"
+                className='context-menu hamburger-context-menu'
                 style={{ top: 0, left: '100%', marginLeft: '2px' }}
                 onClick={(e) => e.stopPropagation()}
               >
@@ -154,9 +154,9 @@ export function SidebarPanel({
                   <span>{t('menu.file')}</span>
                 </div>
                 {hamburgerSubMenu === 'file' && (
-                  <div className="hamburger-sub-menu" style={{ top: 0 }}>
+                  <div className='hamburger-sub-menu' style={{ top: 0 }}>
                     <div
-                      className="context-menu-item"
+                      className='context-menu-item'
                       onClick={() => {
                         openNewFilePalette();
                         setHamburgerMenu(null);
@@ -168,7 +168,7 @@ export function SidebarPanel({
                       </span>
                     </div>
                     <div
-                      className="context-menu-item"
+                      className='context-menu-item'
                       onClick={() => {
                         openFileFromDisk();
                         setHamburgerMenu(null);
@@ -181,7 +181,7 @@ export function SidebarPanel({
                     </div>
                     {isElectron && (
                       <div
-                        className="context-menu-item"
+                        className='context-menu-item'
                         onClick={() => {
                           openFolderFromDisk();
                           setHamburgerMenu(null);
@@ -190,7 +190,7 @@ export function SidebarPanel({
                         <span>{t('menu.file.openFolder')}</span>
                       </div>
                     )}
-                    <div className="context-menu-separator" />
+                    <div className='context-menu-separator' />
                     <div
                       className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
                       onClick={
@@ -209,31 +209,31 @@ export function SidebarPanel({
                     </div>
                     {isElectron && (
                       <>
-                        <div className="context-menu-separator" />
-                        <div className="context-menu-item has-submenu">
+                        <div className='context-menu-separator' />
+                        <div className='context-menu-item has-submenu'>
                           <span>{t('menu.file.recent')}</span>
                           <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>
                             ▶
                           </span>
-                          <div className="context-menu-submenu">
+                          <div className='context-menu-submenu'>
                             {recentFiles.length === 0 ? (
-                              <div className="context-menu-item disabled">
+                              <div className='context-menu-item disabled'>
                                 <span>{t('menu.file.recent.empty')}</span>
                               </div>
                             ) : (
                               recentFiles.map((entry) => (
                                 <div
                                   key={entry.path}
-                                  className="context-menu-item recent-file-item"
+                                  className='context-menu-item recent-file-item'
                                   onClick={() => {
                                     openRecentFile(entry.path);
                                     setHamburgerMenu(null);
                                   }}
                                   title={entry.path}
                                 >
-                                  <div className="recent-file-label">
-                                    <span className="recent-file-name">{entry.name}</span>
-                                    <span className="recent-file-path">{entry.path}</span>
+                                  <div className='recent-file-label'>
+                                    <span className='recent-file-name'>{entry.name}</span>
+                                    <span className='recent-file-path'>{entry.path}</span>
                                   </div>
                                 </div>
                               ))
@@ -253,7 +253,7 @@ export function SidebarPanel({
                   <span>{t('menu.edit')}</span>
                 </div>
                 {hamburgerSubMenu === 'edit' && (
-                  <div className="hamburger-sub-menu" style={{ top: '30px' }}>
+                  <div className='hamburger-sub-menu' style={{ top: '30px' }}>
                     <div
                       className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
                       onClick={
@@ -297,9 +297,9 @@ export function SidebarPanel({
                   <span>{t('menu.view')}</span>
                 </div>
                 {hamburgerSubMenu === 'view' && (
-                  <div className="hamburger-sub-menu" style={{ top: '60px' }}>
+                  <div className='hamburger-sub-menu' style={{ top: '60px' }}>
                     <div
-                      className="context-menu-item"
+                      className='context-menu-item'
                       onClick={() => {
                         triggerCommandPalette();
                         setHamburgerMenu(null);
@@ -308,7 +308,7 @@ export function SidebarPanel({
                       <span>{t('menu.view.commandPalette')}</span>
                       <span style={{ opacity: 0.5, marginLeft: 'auto', fontSize: '11px' }}>F1</span>
                     </div>
-                    <div className="context-menu-separator" />
+                    <div className='context-menu-separator' />
                     <div
                       className={`context-menu-item ${!hasActiveFile ? 'disabled' : ''}`}
                       onClick={
@@ -338,7 +338,7 @@ export function SidebarPanel({
                       <span>{t('menu.view.language')}</span>
                     </div>
                     <div
-                      className="context-menu-item"
+                      className='context-menu-item'
                       onClick={() => {
                         setIsSettingsOpen(true);
                         setShowSettingsTab(true);
@@ -365,9 +365,9 @@ export function SidebarPanel({
                       <span>{t('menu.help')}</span>
                     </div>
                     {hamburgerSubMenu === 'help' && (
-                      <div className="hamburger-sub-menu" style={{ top: '90px' }}>
+                      <div className='hamburger-sub-menu' style={{ top: '90px' }}>
                         <div
-                          className="context-menu-item"
+                          className='context-menu-item'
                           onClick={() => {
                             showAboutDialog();
                             setHamburgerMenu(null);
@@ -375,11 +375,11 @@ export function SidebarPanel({
                         >
                           <span>{t('menu.help.about')}</span>
                         </div>
-                        <div className="context-menu-item has-submenu">
+                        <div className='context-menu-item has-submenu'>
                           <span>{t('menu.help.association')}</span>
-                          <div className="context-menu-submenu">
+                          <div className='context-menu-submenu'>
                             <div
-                              className="context-menu-item"
+                              className='context-menu-item'
                               onClick={() => {
                                 registerFileAssociation();
                                 setHamburgerMenu(null);
@@ -388,7 +388,7 @@ export function SidebarPanel({
                               <span>{t('menu.help.association.register')}</span>
                             </div>
                             <div
-                              className="context-menu-item"
+                              className='context-menu-item'
                               onClick={() => {
                                 unregisterFileAssociation();
                                 setHamburgerMenu(null);
@@ -418,7 +418,7 @@ export function SidebarPanel({
             }
           }}
         >
-          <span className="activity-material-icon" aria-hidden="true">
+          <span className='activity-material-icon' aria-hidden='true'>
             folder
           </span>
         </div>
@@ -434,7 +434,7 @@ export function SidebarPanel({
             }
           }}
         >
-          <span className="activity-material-icon" aria-hidden="true">
+          <span className='activity-material-icon' aria-hidden='true'>
             format_list_bulleted
           </span>
         </div>
@@ -451,7 +451,7 @@ export function SidebarPanel({
             }
           }}
         >
-          <span className="activity-material-icon" aria-hidden="true">
+          <span className='activity-material-icon' aria-hidden='true'>
             menu_book
           </span>
         </div>
@@ -459,14 +459,14 @@ export function SidebarPanel({
         <div style={{ flex: 1 }}></div>
 
         <div
-          className="activity-icon"
+          className='activity-icon'
           data-tooltip-right={t('activity.settings')}
           onClick={() => {
             setIsSettingsOpen(true);
             setShowSettingsTab(true);
           }}
         >
-          <span className="activity-material-icon" aria-hidden="true">
+          <span className='activity-material-icon' aria-hidden='true'>
             settings
           </span>
         </div>
@@ -476,20 +476,20 @@ export function SidebarPanel({
         className={`side-bar ${isSidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}
         style={{ width: isSidebarOpen ? sidebarWidth : 0 }}
       >
-        <div className="side-bar-header">
+        <div className='side-bar-header'>
           {activeSidebarTab === 'explorer' ? (
-            <div className="sidebar-header">
+            <div className='sidebar-header'>
               <h3>{t('sidebar.explorer')}</h3>
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button
-                  className="sidebar-action-btn"
+                  className='sidebar-action-btn'
                   onClick={openNewFilePalette}
                   data-tooltip={t('sidebar.newFile')}
                 >
                   <Plus size={16} />
                 </button>
                 <button
-                  className="sidebar-action-btn"
+                  className='sidebar-action-btn'
                   onClick={openFileFromDisk}
                   data-tooltip={t('sidebar.openFile')}
                 >
@@ -529,7 +529,7 @@ export function SidebarPanel({
         </div>
 
         <div
-          className="side-bar-content"
+          className='side-bar-content'
           style={{ padding: 0, overflowY: 'auto', flex: 1 }}
           onContextMenu={(e) => {
             if (activeSidebarTab === 'explorer') {
@@ -540,24 +540,24 @@ export function SidebarPanel({
         >
           {activeSidebarTab === 'explorer' ? (
             files.length === 0 && !openedFolderPath ? (
-              <div className="explorer-empty">
-                <div className="explorer-empty-title">{t('sidebar.empty')}</div>
-                <div className="explorer-empty-actions">
-                  <button className="explorer-empty-btn" onClick={openNewFilePalette}>
+              <div className='explorer-empty'>
+                <div className='explorer-empty-title'>{t('sidebar.empty')}</div>
+                <div className='explorer-empty-actions'>
+                  <button className='explorer-empty-btn' onClick={openNewFilePalette}>
                     {t('sidebar.empty.createFile')}
                   </button>
-                  <button className="explorer-empty-btn" onClick={openFileFromDisk}>
+                  <button className='explorer-empty-btn' onClick={openFileFromDisk}>
                     {t('sidebar.empty.openFile')}
                   </button>
                   {isElectron && (
-                    <button className="explorer-empty-btn" onClick={createFolderFromDisk}>
+                    <button className='explorer-empty-btn' onClick={createFolderFromDisk}>
                       {t('sidebar.empty.createFolder')}
                     </button>
                   )}
                 </div>
               </div>
             ) : (
-              <ul className="explorer-list">
+              <ul className='explorer-list'>
                 {files.map((file) => (
                   <li
                     key={file.id}
@@ -586,10 +586,10 @@ export function SidebarPanel({
                       >
                         {file.name}
                       </span>
-                      {getIsDirty(file) && <span className="dirty-marker">*</span>}
+                      {getIsDirty(file) && <span className='dirty-marker'>*</span>}
                     </div>
                     <button
-                      className="explorer-close-btn"
+                      className='explorer-close-btn'
                       onClick={(e) => {
                         e.stopPropagation();
                         closeFile(e, file.id);
@@ -603,7 +603,7 @@ export function SidebarPanel({
               </ul>
             )
           ) : activeSidebarTab === 'outline' ? (
-            <div className="outline-list" style={{ padding: '8px 0' }}>
+            <div className='outline-list' style={{ padding: '8px 0' }}>
               {outlineItems.length > 0 ? (
                 outlineItems.map((item, index) => (
                   <div
@@ -641,7 +641,7 @@ export function SidebarPanel({
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 <div
-                  className="docs-item"
+                  className='docs-item'
                   style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}
                 >
                   <div
@@ -664,7 +664,7 @@ export function SidebarPanel({
                     ### Heading 3
                   </code>
                   <div
-                    className="preview-pane docs-preview"
+                    className='preview-pane docs-preview'
                     style={{
                       padding: '8px',
                       border: '1px solid var(--toolbar-border)',
@@ -678,7 +678,7 @@ export function SidebarPanel({
                   </div>
                 </div>
                 <div
-                  className="docs-item"
+                  className='docs-item'
                   style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}
                 >
                   <div
@@ -703,7 +703,7 @@ export function SidebarPanel({
                     ~~Strikethrough~~
                   </code>
                   <div
-                    className="preview-pane docs-preview"
+                    className='preview-pane docs-preview'
                     style={{
                       padding: '8px',
                       border: '1px solid var(--toolbar-border)',
@@ -721,7 +721,7 @@ export function SidebarPanel({
                   </div>
                 </div>
                 <div
-                  className="docs-item"
+                  className='docs-item'
                   style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}
                 >
                   <div
@@ -740,7 +740,7 @@ export function SidebarPanel({
                     }}
                   >{`- Item 1\n- Item 2\n  - Sub item`}</code>
                   <div
-                    className="preview-pane docs-preview"
+                    className='preview-pane docs-preview'
                     style={{
                       padding: '8px',
                       border: '1px solid var(--toolbar-border)',
@@ -760,7 +760,7 @@ export function SidebarPanel({
                   </div>
                 </div>
                 <div
-                  className="docs-item"
+                  className='docs-item'
                   style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}
                 >
                   <div
@@ -785,7 +785,7 @@ export function SidebarPanel({
                     ```
                   </code>
                   <div
-                    className="preview-pane docs-preview"
+                    className='preview-pane docs-preview'
                     style={{
                       padding: '8px',
                       border: '1px solid var(--toolbar-border)',
@@ -802,7 +802,7 @@ export function SidebarPanel({
                   </div>
                 </div>
                 <div
-                  className="docs-item"
+                  className='docs-item'
                   style={{ borderBottom: '1px solid var(--sidebar-border)', paddingBottom: '12px' }}
                 >
                   <div
@@ -825,7 +825,7 @@ export function SidebarPanel({
                     &gt; Content here
                   </code>
                   <div
-                    className="preview-pane docs-preview"
+                    className='preview-pane docs-preview'
                     style={{
                       padding: '8px',
                       border: '1px solid var(--toolbar-border)',
@@ -841,9 +841,9 @@ export function SidebarPanel({
                 <div style={{ fontSize: '12px', opacity: 0.7, paddingTop: '8px' }}>
                   {t('docs.reference')}
                   <a
-                    href="https://www.tohoho-web.com/ex/markdown.html"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href='https://www.tohoho-web.com/ex/markdown.html'
+                    target='_blank'
+                    rel='noopener noreferrer'
                     style={{ color: 'var(--accent-color)' }}
                   >
                     {t('docs.referenceLink')}
@@ -856,7 +856,7 @@ export function SidebarPanel({
         </div>
       </div>
 
-      <div className="resizer-x" onMouseDown={startResizingSidebar} title={t('resizer.tooltip')} />
+      <div className='resizer-x' onMouseDown={startResizingSidebar} title={t('resizer.tooltip')} />
     </>
   );
 }
