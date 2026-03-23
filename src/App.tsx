@@ -2319,7 +2319,7 @@ function App() {
   };
 
   return (
-    <div className="app-container min-h-screen" style={appContainerStyle}>
+    <div className='app-container min-h-screen' style={appContainerStyle}>
       <TitleBar
         t={t}
         effectiveMenuBarMode={effectiveMenuBarMode}
@@ -2395,7 +2395,7 @@ function App() {
       />
 
       <main
-        className="app-main"
+        className='app-main'
         onDrop={handleDrop}
         onDragOver={handleDragOver}
         onDragEnter={handleDragEnter}

@@ -92,26 +92,26 @@ export function QuickPickLayer({
     <>
       {showLanguagePalette && (
         <div
-          className="quickpick-overlay"
+          className='quickpick-overlay'
           onClick={() => {
             setShowLanguagePalette(false);
             setLanguageSearch('');
           }}
         >
-          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
-            <div className="quickpick-input-wrapper">
-              <div className="quickpick-title">{t('langPalette.title')}</div>
+          <div className='quickpick-container' onClick={(e) => e.stopPropagation()}>
+            <div className='quickpick-input-wrapper'>
+              <div className='quickpick-title'>{t('langPalette.title')}</div>
               <input
                 ref={languageInputRef}
-                className="quickpick-input"
-                type="text"
+                className='quickpick-input'
+                type='text'
                 placeholder={t('langPalette.placeholder')}
                 value={languageSearch}
                 onChange={(e) => setLanguageSearch(e.target.value)}
                 onKeyDown={handleLanguagePaletteKeyDown}
               />
             </div>
-            <div className="quickpick-list">
+            <div className='quickpick-list'>
               {filteredLanguages.map((lang, index) => (
                 <div
                   key={lang.id}
@@ -119,14 +119,14 @@ export function QuickPickLayer({
                   onClick={() => selectLanguage(lang.id)}
                   onMouseEnter={() => setActiveLanguageIndex(index)}
                 >
-                  <span className="quickpick-item-label">
+                  <span className='quickpick-item-label'>
                     {lang.aliases && lang.aliases.length > 0 ? lang.aliases[0] : lang.id}
                   </span>
-                  <span className="quickpick-item-sub">({lang.id})</span>
+                  <span className='quickpick-item-sub'>({lang.id})</span>
                 </div>
               ))}
               {filteredLanguages.length === 0 && (
-                <div className="quickpick-item" style={{ opacity: 0.5, pointerEvents: 'none' }}>
+                <div className='quickpick-item' style={{ opacity: 0.5, pointerEvents: 'none' }}>
                   {t('langPalette.noMatch')}
                 </div>
               )}
@@ -136,14 +136,14 @@ export function QuickPickLayer({
       )}
 
       {showNewFilePalette && (
-        <div className="quickpick-overlay" onClick={() => setShowNewFilePalette(false)}>
-          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
-            <div className="quickpick-input-wrapper">
-              <div className="quickpick-title">{t('newFile.title')}</div>
+        <div className='quickpick-overlay' onClick={() => setShowNewFilePalette(false)}>
+          <div className='quickpick-container' onClick={(e) => e.stopPropagation()}>
+            <div className='quickpick-input-wrapper'>
+              <div className='quickpick-title'>{t('newFile.title')}</div>
               <input
                 ref={newFileInputRef}
-                className="quickpick-input"
-                type="text"
+                className='quickpick-input'
+                type='text'
                 placeholder={t('newFile.placeholder')}
                 value={newFileNameInput}
                 onChange={(e) => setNewFileNameInput(e.target.value)}
@@ -169,10 +169,10 @@ export function QuickPickLayer({
       )}
 
       {showConfirmPalette && (
-        <div className="quickpick-overlay" onClick={showConfirmPalette.onCancel}>
-          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
+        <div className='quickpick-overlay' onClick={showConfirmPalette.onCancel}>
+          <div className='quickpick-container' onClick={(e) => e.stopPropagation()}>
             <div
-              className="quickpick-header"
+              className='quickpick-header'
               style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-color)' }}
             >
               <div style={{ fontSize: '13px', fontWeight: 600 }}>{showConfirmPalette.title}</div>
@@ -182,26 +182,26 @@ export function QuickPickLayer({
                 </div>
               )}
             </div>
-            <div className="quickpick-list" style={{ maxHeight: 'none' }}>
-              <div className="quickpick-item" onClick={showConfirmPalette.onConfirm}>
-                <div className="quickpick-item-info">
-                  <div className="quickpick-item-label">{t('confirm.saveAndClose')}</div>
-                  <div className="quickpick-item-desc">{t('confirm.saveAndCloseDesc')}</div>
+            <div className='quickpick-list' style={{ maxHeight: 'none' }}>
+              <div className='quickpick-item' onClick={showConfirmPalette.onConfirm}>
+                <div className='quickpick-item-info'>
+                  <div className='quickpick-item-label'>{t('confirm.saveAndClose')}</div>
+                  <div className='quickpick-item-desc'>{t('confirm.saveAndCloseDesc')}</div>
                 </div>
               </div>
-              <div className="quickpick-item" onClick={showConfirmPalette.onDeny}>
-                <div className="quickpick-item-info">
-                  <div className="quickpick-item-label" style={{ color: 'var(--accent-color)' }}>
+              <div className='quickpick-item' onClick={showConfirmPalette.onDeny}>
+                <div className='quickpick-item-info'>
+                  <div className='quickpick-item-label' style={{ color: 'var(--accent-color)' }}>
                     {t('confirm.closeWithoutSave')}
                   </div>
-                  <div className="quickpick-item-desc">{t('confirm.closeWithoutSaveDesc')}</div>
+                  <div className='quickpick-item-desc'>{t('confirm.closeWithoutSaveDesc')}</div>
                 </div>
               </div>
-              <div className="context-menu-separator" style={{ margin: 0 }} />
-              <div className="quickpick-item" onClick={showConfirmPalette.onCancel}>
-                <div className="quickpick-item-info">
-                  <div className="quickpick-item-label">{t('confirm.cancel')}</div>
-                  <div className="quickpick-item-desc">{t('confirm.cancelDesc')}</div>
+              <div className='context-menu-separator' style={{ margin: 0 }} />
+              <div className='quickpick-item' onClick={showConfirmPalette.onCancel}>
+                <div className='quickpick-item-info'>
+                  <div className='quickpick-item-label'>{t('confirm.cancel')}</div>
+                  <div className='quickpick-item-desc'>{t('confirm.cancelDesc')}</div>
                 </div>
               </div>
             </div>
@@ -210,12 +210,12 @@ export function QuickPickLayer({
       )}
 
       {showLangSwitchPalette && (
-        <div className="quickpick-overlay" onClick={() => setShowLangSwitchPalette(false)}>
-          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
-            <div className="quickpick-input-wrapper">
-              <div className="quickpick-title">{t('langSwitch.title')}</div>
+        <div className='quickpick-overlay' onClick={() => setShowLangSwitchPalette(false)}>
+          <div className='quickpick-container' onClick={(e) => e.stopPropagation()}>
+            <div className='quickpick-input-wrapper'>
+              <div className='quickpick-title'>{t('langSwitch.title')}</div>
             </div>
-            <div className="quickpick-list" style={{ maxHeight: 'none' }}>
+            <div className='quickpick-list' style={{ maxHeight: 'none' }}>
               <div
                 className={`quickpick-item ${settingsLanguage === 'ja' ? 'active' : ''}`}
                 onClick={() => {
@@ -224,7 +224,7 @@ export function QuickPickLayer({
                 }}
               >
                 <Languages size={16} />
-                <span className="quickpick-item-label">{t('langSwitch.ja')}</span>
+                <span className='quickpick-item-label'>{t('langSwitch.ja')}</span>
               </div>
               <div
                 className={`quickpick-item ${settingsLanguage === 'en' ? 'active' : ''}`}
@@ -234,7 +234,7 @@ export function QuickPickLayer({
                 }}
               >
                 <Languages size={16} />
-                <span className="quickpick-item-label">{t('langSwitch.en')}</span>
+                <span className='quickpick-item-label'>{t('langSwitch.en')}</span>
               </div>
             </div>
           </div>
@@ -243,26 +243,26 @@ export function QuickPickLayer({
 
       {showRecentPalette && (
         <div
-          className="quickpick-overlay"
+          className='quickpick-overlay'
           onClick={() => {
             setShowRecentPalette(false);
             setRecentSearch('');
           }}
         >
-          <div className="quickpick-container" onClick={(e) => e.stopPropagation()}>
-            <div className="quickpick-input-wrapper">
-              <div className="quickpick-title">{t('recentPalette.title')}</div>
+          <div className='quickpick-container' onClick={(e) => e.stopPropagation()}>
+            <div className='quickpick-input-wrapper'>
+              <div className='quickpick-title'>{t('recentPalette.title')}</div>
               <input
                 ref={recentInputRef}
-                className="quickpick-input"
-                type="text"
+                className='quickpick-input'
+                type='text'
                 placeholder={t('recentPalette.placeholder')}
                 value={recentSearch}
                 onChange={(e) => setRecentSearch(e.target.value)}
                 onKeyDown={handleRecentPaletteKeyDown}
               />
             </div>
-            <div className="quickpick-list">
+            <div className='quickpick-list'>
               {filteredRecentFiles.map((entry, index) => (
                 <div
                   key={entry.path}
@@ -275,12 +275,12 @@ export function QuickPickLayer({
                   onMouseEnter={() => setActiveRecentIndex(index)}
                   title={entry.path}
                 >
-                  <span className="quickpick-item-label">{entry.name}</span>
-                  <span className="quickpick-item-sub">{entry.path}</span>
+                  <span className='quickpick-item-label'>{entry.name}</span>
+                  <span className='quickpick-item-sub'>{entry.path}</span>
                 </div>
               ))}
               {filteredRecentFiles.length === 0 && (
-                <div className="quickpick-item" style={{ opacity: 0.5, pointerEvents: 'none' }}>
+                <div className='quickpick-item' style={{ opacity: 0.5, pointerEvents: 'none' }}>
                   {t('recentPalette.empty')}
                 </div>
               )}

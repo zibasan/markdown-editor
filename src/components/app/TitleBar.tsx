@@ -93,14 +93,14 @@ export function TitleBar({
         className={`app-titlebar ${isElectron ? 'is-electron' : ''}`}
         onContextMenu={onTitleBarContextMenu}
       >
-        <div className="titlebar-section">
+        <div className='titlebar-section'>
           <div style={{ padding: '0 8px', display: 'flex' }}>
-            <img src={logoImage} alt="App Icon" style={{ width: 16, height: 16 }} />
+            <img src={logoImage} alt='App Icon' style={{ width: 16, height: 16 }} />
           </div>
 
           {(effectiveMenuBarMode === 'visible' ||
             (effectiveMenuBarMode === 'toggle' && isMenuBarVisibleByAlt)) && (
-            <div className="menu-bar">
+            <div className='menu-bar'>
               <div
                 className={`menu-item ${activeMenu === 'file' ? 'active' : ''}`}
                 onClick={() => setActiveMenu(activeMenu === 'file' ? null : 'file')}
@@ -108,9 +108,9 @@ export function TitleBar({
               >
                 {t('menu.file')}
                 {activeMenu === 'file' && (
-                  <div className="menu-dropdown">
+                  <div className='menu-dropdown'>
                     <div
-                      className="menu-dropdown-item"
+                      className='menu-dropdown-item'
                       onClick={(e) => {
                         e.stopPropagation();
                         openNewFilePalette();
@@ -118,10 +118,10 @@ export function TitleBar({
                       }}
                     >
                       <span>{t('menu.file.new')}</span>
-                      <span className="menu-dropdown-shortcut">Ctrl+K, N</span>
+                      <span className='menu-dropdown-shortcut'>Ctrl+K, N</span>
                     </div>
                     <div
-                      className="menu-dropdown-item"
+                      className='menu-dropdown-item'
                       onClick={(e) => {
                         e.stopPropagation();
                         openFileFromDisk();
@@ -129,11 +129,11 @@ export function TitleBar({
                       }}
                     >
                       <span>{t('menu.file.open')}</span>
-                      <span className="menu-dropdown-shortcut">Ctrl+O</span>
+                      <span className='menu-dropdown-shortcut'>Ctrl+O</span>
                     </div>
                     {isElectron && (
                       <div
-                        className="menu-dropdown-item"
+                        className='menu-dropdown-item'
                         onClick={(e) => {
                           e.stopPropagation();
                           openFolderFromDisk();
@@ -143,7 +143,7 @@ export function TitleBar({
                         <span>{t('menu.file.openFolder')}</span>
                       </div>
                     )}
-                    <div className="menu-dropdown-separator"></div>
+                    <div className='menu-dropdown-separator'></div>
                     <div
                       className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
                       onClick={(e) => {
@@ -153,24 +153,24 @@ export function TitleBar({
                       }}
                     >
                       <span>{t('menu.file.save')}</span>
-                      <span className="menu-dropdown-shortcut">Ctrl+S</span>
+                      <span className='menu-dropdown-shortcut'>Ctrl+S</span>
                     </div>
                     {isElectron && (
                       <>
-                        <div className="menu-dropdown-separator"></div>
-                        <div className="menu-dropdown-item has-submenu">
+                        <div className='menu-dropdown-separator'></div>
+                        <div className='menu-dropdown-item has-submenu'>
                           <span>{t('menu.file.recent')}</span>
-                          <span className="menu-dropdown-shortcut">▶</span>
-                          <div className="menu-dropdown-submenu">
+                          <span className='menu-dropdown-shortcut'>▶</span>
+                          <div className='menu-dropdown-submenu'>
                             {recentFiles.length === 0 ? (
-                              <div className="menu-dropdown-item disabled">
+                              <div className='menu-dropdown-item disabled'>
                                 <span>{t('menu.file.recent.empty')}</span>
                               </div>
                             ) : (
                               recentFiles.map((entry) => (
                                 <div
                                   key={entry.path}
-                                  className="menu-dropdown-item recent-file-item"
+                                  className='menu-dropdown-item recent-file-item'
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     openRecentFile(entry.path);
@@ -178,9 +178,9 @@ export function TitleBar({
                                   }}
                                   title={entry.path}
                                 >
-                                  <div className="recent-file-label">
-                                    <span className="recent-file-name">{entry.name}</span>
-                                    <span className="recent-file-path">{entry.path}</span>
+                                  <div className='recent-file-label'>
+                                    <span className='recent-file-name'>{entry.name}</span>
+                                    <span className='recent-file-path'>{entry.path}</span>
                                   </div>
                                 </div>
                               ))
@@ -200,7 +200,7 @@ export function TitleBar({
               >
                 {t('menu.edit')}
                 {activeMenu === 'edit' && (
-                  <div className="menu-dropdown">
+                  <div className='menu-dropdown'>
                     <div
                       className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
                       onClick={(e) => {
@@ -210,7 +210,7 @@ export function TitleBar({
                       }}
                     >
                       <span>{t('menu.edit.undo')}</span>
-                      <span className="menu-dropdown-shortcut">Ctrl+Z</span>
+                      <span className='menu-dropdown-shortcut'>Ctrl+Z</span>
                     </div>
                     <div
                       className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
@@ -221,7 +221,7 @@ export function TitleBar({
                       }}
                     >
                       <span>{t('menu.edit.redo')}</span>
-                      <span className="menu-dropdown-shortcut">Ctrl+Y</span>
+                      <span className='menu-dropdown-shortcut'>Ctrl+Y</span>
                     </div>
                   </div>
                 )}
@@ -234,9 +234,9 @@ export function TitleBar({
               >
                 {t('menu.view')}
                 {activeMenu === 'view' && (
-                  <div className="menu-dropdown">
+                  <div className='menu-dropdown'>
                     <div
-                      className="menu-dropdown-item"
+                      className='menu-dropdown-item'
                       onClick={(e) => {
                         e.stopPropagation();
                         triggerCommandPalette();
@@ -244,9 +244,9 @@ export function TitleBar({
                       }}
                     >
                       <span>{t('menu.view.commandPalette')}</span>
-                      <span className="menu-dropdown-shortcut">F1</span>
+                      <span className='menu-dropdown-shortcut'>F1</span>
                     </div>
-                    <div className="menu-dropdown-separator"></div>
+                    <div className='menu-dropdown-separator'></div>
                     <div
                       className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
                       onClick={(e) => {
@@ -259,9 +259,9 @@ export function TitleBar({
                       <span>
                         {showPreview ? t('menu.view.previewClose') : t('menu.view.previewOpen')}
                       </span>
-                      <span className="menu-dropdown-shortcut">Ctrl+Shift+V</span>
+                      <span className='menu-dropdown-shortcut'>Ctrl+Shift+V</span>
                     </div>
-                    <div className="menu-dropdown-separator"></div>
+                    <div className='menu-dropdown-separator'></div>
                     <div
                       className={`menu-dropdown-item ${!hasActiveFile ? 'disabled' : ''}`}
                       onClick={(e) => {
@@ -273,9 +273,9 @@ export function TitleBar({
                     >
                       <span>{t('menu.view.language')}</span>
                     </div>
-                    <div className="menu-dropdown-separator"></div>
+                    <div className='menu-dropdown-separator'></div>
                     <div
-                      className="menu-dropdown-item"
+                      className='menu-dropdown-item'
                       onClick={(e) => {
                         e.stopPropagation();
                         setIsSettingsOpen(true);
@@ -283,7 +283,7 @@ export function TitleBar({
                       }}
                     >
                       <span>{t('menu.view.settings')}</span>
-                      <span className="menu-dropdown-shortcut">Ctrl+,</span>
+                      <span className='menu-dropdown-shortcut'>Ctrl+,</span>
                     </div>
                   </div>
                 )}
@@ -297,12 +297,12 @@ export function TitleBar({
                 >
                   {t('menu.help')}
                   {activeMenu === 'help' && (
-                    <div className="menu-dropdown">
+                    <div className='menu-dropdown'>
                       {/* 【追加】アップデート準備完了時のみ表示されるメニュー */}
                       {updateReadyVersion && (
                         <>
                           <div
-                            className="menu-dropdown-item menu-dropdown-item-update"
+                            className='menu-dropdown-item menu-dropdown-item-update'
                             onClick={(e) => {
                               e.stopPropagation();
                               window.electronAPI?.installUpdate?.();
@@ -314,12 +314,12 @@ export function TitleBar({
                               {t('menu.help.update')} (v{updateReadyVersion})
                             </span>
                           </div>
-                          <div className="menu-dropdown-separator"></div>
+                          <div className='menu-dropdown-separator'></div>
                         </>
                       )}
 
                       <div
-                        className="menu-dropdown-item"
+                        className='menu-dropdown-item'
                         onClick={(e) => {
                           e.stopPropagation();
                           showAboutDialog();
@@ -328,12 +328,12 @@ export function TitleBar({
                       >
                         <span>{t('menu.help.about')}</span>
                       </div>
-                      <div className="menu-dropdown-item has-submenu">
+                      <div className='menu-dropdown-item has-submenu'>
                         <span>{t('menu.help.association')}</span>
-                        <span className="menu-dropdown-shortcut">▶</span>
-                        <div className="menu-dropdown-submenu">
+                        <span className='menu-dropdown-shortcut'>▶</span>
+                        <div className='menu-dropdown-submenu'>
                           <div
-                            className="menu-dropdown-item"
+                            className='menu-dropdown-item'
                             onClick={(e) => {
                               e.stopPropagation();
                               registerFileAssociation();
@@ -343,7 +343,7 @@ export function TitleBar({
                             <span>{t('menu.help.association.register')}</span>
                           </div>
                           <div
-                            className="menu-dropdown-item"
+                            className='menu-dropdown-item'
                             onClick={(e) => {
                               e.stopPropagation();
                               unregisterFileAssociation();
@@ -362,10 +362,10 @@ export function TitleBar({
           )}
         </div>
 
-        <div className="titlebar-section titlebar-center">
+        <div className='titlebar-section titlebar-center'>
           {settings.showCommandBar ? (
             <button
-              className="command-palette-trigger"
+              className='command-palette-trigger'
               onClick={triggerCommandPalette}
               data-tooltip={t('titlebar.commandPaletteTooltip')}
             >
@@ -373,28 +373,28 @@ export function TitleBar({
               <span>{t('titlebar.searchPlaceholder')}</span>
             </button>
           ) : (
-            <div className="titlebar-center-title">{activeFileName || 'Markdown Editor'}</div>
+            <div className='titlebar-center-title'>{activeFileName || 'Markdown Editor'}</div>
           )}
         </div>
 
         {/* 【修正】右側セクション（テーマ切り替え + ウィンドウコントロール） */}
-        <div className="titlebar-section titlebar-right">
+        <div className='titlebar-section titlebar-right'>
           {/* アップデート準備完了ボタン */}
           {updateReadyVersion && (
             <button
-              className="update-btn"
+              className='update-btn'
               onClick={() => window.electronAPI?.installUpdate?.()}
               data-tooltip={`${t('titlebar.updateButtonTooltip')} (v${updateReadyVersion})`}
             >
-              <div className="update-content">
+              <div className='update-content'>
                 <Download size={16} />
-                <span className="update-text">{t('titlebar.updateButtonText')}</span>
+                <span className='update-text'>{t('titlebar.updateButtonText')}</span>
               </div>
             </button>
           )}
 
           <button
-            className="theme-toggle-btn"
+            className='theme-toggle-btn'
             onClick={toggleTheme}
             data-tooltip-left={`${t('titlebar.themeToggle')} (${theme})`}
           >
@@ -411,7 +411,7 @@ export function TitleBar({
 
       {titleBarContextMenu && (
         <div
-          className="context-menu"
+          className='context-menu'
           style={{
             position: 'fixed',
             top: titleBarContextMenu.y,
@@ -421,7 +421,7 @@ export function TitleBar({
           onClick={(e) => e.stopPropagation()}
         >
           <div
-            className="context-menu-item"
+            className='context-menu-item'
             onClick={() => {
               setSettings({ ...settings, showCommandBar: !settings.showCommandBar });
               setTitleBarContextMenu(null);

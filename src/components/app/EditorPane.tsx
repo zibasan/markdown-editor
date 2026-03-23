@@ -25,7 +25,7 @@ function DiscordSpoiler({ children }: DiscordSpoilerProps) {
     <span
       className={`discord-spoiler ${revealed ? 'revealed' : ''}`}
       onClick={() => setRevealed((prev) => !prev)}
-      role="button"
+      role='button'
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
@@ -173,8 +173,8 @@ export function EditorPane({
   }, [activeFile, settings.enableDiscordMarkdown]);
 
   return (
-    <div className="editor-container">
-      <div className="tabs-container">
+    <div className='editor-container'>
+      <div className='tabs-container'>
         {files.map((file) => {
           return (
             <div
@@ -194,17 +194,17 @@ export function EditorPane({
                       : 'codicon codicon-file'
                 }`}
                 style={{ fontSize: '14px' }}
-                aria-hidden="true"
+                aria-hidden='true'
               />
-              <span className="tab-title">{file.name}</span>
-              {getIsDirty(file) && <span className="dirty-marker">*</span>}
+              <span className='tab-title'>{file.name}</span>
+              {getIsDirty(file) && <span className='dirty-marker'>*</span>}
               <button
-                className="tab-close-btn"
+                className='tab-close-btn'
                 onClick={(e) => {
                   e.stopPropagation();
                   closeFile(e, file.id);
                 }}
-                data-tooltip="閉じる"
+                data-tooltip='閉じる'
               >
                 <X size={14} />
               </button>
@@ -218,15 +218,15 @@ export function EditorPane({
             onClick={() => setIsSettingsOpen(true)}
           >
             <Settings size={14} />
-            <span className="tab-title">{t('settings.title')}</span>
+            <span className='tab-title'>{t('settings.title')}</span>
             <button
-              className="tab-close-btn"
+              className='tab-close-btn'
               onClick={(e) => {
                 e.stopPropagation();
                 setIsSettingsOpen(false);
                 setShowSettingsTab(false);
               }}
-              data-tooltip="閉じる"
+              data-tooltip='閉じる'
             >
               <X size={14} />
             </button>
@@ -254,24 +254,24 @@ export function EditorPane({
         className={`split-view-container ${showPreview && activeFile ? 'preview-mobile-active' : ''}`}
       >
         {isSettingsOpen ? (
-          <div className="settings-tab-content">
-            <div className="settings-tab-header">
-              <h2 className="settings-tab-title">{t('settings.title')}</h2>
-              <button type="button" className="settings-reset-btn" onClick={resetSettingsToDefault}>
+          <div className='settings-tab-content'>
+            <div className='settings-tab-header'>
+              <h2 className='settings-tab-title'>{t('settings.title')}</h2>
+              <button type='button' className='settings-reset-btn' onClick={resetSettingsToDefault}>
                 <RotateCcw size={13} />
                 <span>{t('settings.resetDefaults')}</span>
               </button>
             </div>
-            <div className="settings-content">
+            <div className='settings-content'>
               <div className={`setting-row ${isSettingModified('language') ? 'modified' : ''}`}>
-                <span className="setting-label">
-                  <span className="setting-material-icon" aria-hidden="true">
+                <span className='setting-label'>
+                  <span className='setting-material-icon' aria-hidden='true'>
                     language
                   </span>
                   {t('settings.language')}
                 </span>
                 <select
-                  className="setting-input"
+                  className='setting-input'
                   style={{ fontFamily: settings.uiFont }}
                   value={settings.language}
                   onChange={(e) => {
@@ -280,22 +280,22 @@ export function EditorPane({
                     configureMonacoLocale(newLang);
                   }}
                 >
-                  <option value="ja">{t('langSwitch.ja')}</option>
-                  <option value="en">{t('langSwitch.en')}</option>
+                  <option value='ja'>{t('langSwitch.ja')}</option>
+                  <option value='en'>{t('langSwitch.en')}</option>
                 </select>
               </div>
 
               <div
                 className={`setting-row ${isSettingModified('menuBarVisibility') ? 'modified' : ''}`}
               >
-                <span className="setting-label">
-                  <span className="setting-material-icon" aria-hidden="true">
+                <span className='setting-label'>
+                  <span className='setting-material-icon' aria-hidden='true'>
                     menu_open
                   </span>
                   {t('settings.menuBarVisibility')}
                 </span>
                 <select
-                  className="setting-input"
+                  className='setting-input'
                   style={{ fontFamily: settings.uiFont }}
                   value={settings.menuBarVisibility}
                   onChange={(e) =>
@@ -309,18 +309,18 @@ export function EditorPane({
                     })
                   }
                 >
-                  <option value="visible">{t('settings.menuBar.visible')}</option>
-                  <option value="hidden">{t('settings.menuBar.hidden')}</option>
-                  <option value="compact">{t('settings.menuBar.compact')}</option>
-                  <option value="toggle">{t('settings.menuBar.toggle')}</option>
+                  <option value='visible'>{t('settings.menuBar.visible')}</option>
+                  <option value='hidden'>{t('settings.menuBar.hidden')}</option>
+                  <option value='compact'>{t('settings.menuBar.compact')}</option>
+                  <option value='toggle'>{t('settings.menuBar.toggle')}</option>
                 </select>
               </div>
 
               <div
                 className={`setting-row ${isSettingModified('showTabFileName') ? 'modified' : ''}`}
               >
-                <span className="setting-label">
-                  <span className="setting-material-icon" aria-hidden="true">
+                <span className='setting-label'>
+                  <span className='setting-material-icon' aria-hidden='true'>
                     tab
                   </span>
                   {t('settings.showTabFileName')}
@@ -331,7 +331,7 @@ export function EditorPane({
                     setSettings({ ...settings, showTabFileName: !settings.showTabFileName })
                   }
                 >
-                  <span className="toggle-icon">
+                  <span className='toggle-icon'>
                     {settings.showTabFileName ? (
                       <Check size={12} strokeWidth={3} />
                     ) : (
@@ -342,16 +342,16 @@ export function EditorPane({
               </div>
 
               <div className={`setting-row ${isSettingModified('fontSize') ? 'modified' : ''}`}>
-                <span className="setting-label">
-                  <span className="setting-material-icon" aria-hidden="true">
+                <span className='setting-label'>
+                  <span className='setting-material-icon' aria-hidden='true'>
                     format_size
                   </span>
                   {t('settings.fontSize')}
                 </span>
-                <div className="setting-number-control">
+                <div className='setting-number-control'>
                   <input
-                    type="number"
-                    className="setting-input setting-number-input"
+                    type='number'
+                    className='setting-input setting-number-input'
                     value={settings.fontSize}
                     onChange={(e) =>
                       setNumericSetting('fontSize', Number(e.target.value), 14, 8, 72)
@@ -359,24 +359,24 @@ export function EditorPane({
                     min={8}
                     max={72}
                   />
-                  <div className="setting-number-buttons">
+                  <div className='setting-number-buttons'>
                     <button
-                      type="button"
-                      className="setting-step-btn"
+                      type='button'
+                      className='setting-step-btn'
                       onClick={() =>
                         setNumericSetting('fontSize', settings.fontSize + 1, 14, 8, 72)
                       }
-                      aria-label="Increase font size"
+                      aria-label='Increase font size'
                     >
                       <ChevronUp size={11} />
                     </button>
                     <button
-                      type="button"
-                      className="setting-step-btn"
+                      type='button'
+                      className='setting-step-btn'
                       onClick={() =>
                         setNumericSetting('fontSize', settings.fontSize - 1, 14, 8, 72)
                       }
-                      aria-label="Decrease font size"
+                      aria-label='Decrease font size'
                     >
                       <ChevronDown size={11} />
                     </button>
@@ -385,16 +385,16 @@ export function EditorPane({
               </div>
 
               <div className={`setting-row ${isSettingModified('lineHeight') ? 'modified' : ''}`}>
-                <span className="setting-label">
-                  <span className="setting-material-icon" aria-hidden="true">
+                <span className='setting-label'>
+                  <span className='setting-material-icon' aria-hidden='true'>
                     format_line_spacing
                   </span>
                   {t('settings.lineHeight')}
                 </span>
-                <div className="setting-number-control">
+                <div className='setting-number-control'>
                   <input
-                    type="number"
-                    className="setting-input setting-number-input"
+                    type='number'
+                    className='setting-input setting-number-input'
                     value={settings.lineHeight}
                     onChange={(e) =>
                       setNumericSetting('lineHeight', Number(e.target.value), 24, 12, 100)
@@ -402,24 +402,24 @@ export function EditorPane({
                     min={12}
                     max={100}
                   />
-                  <div className="setting-number-buttons">
+                  <div className='setting-number-buttons'>
                     <button
-                      type="button"
-                      className="setting-step-btn"
+                      type='button'
+                      className='setting-step-btn'
                       onClick={() =>
                         setNumericSetting('lineHeight', settings.lineHeight + 1, 24, 12, 100)
                       }
-                      aria-label="Increase line height"
+                      aria-label='Increase line height'
                     >
                       <ChevronUp size={11} />
                     </button>
                     <button
-                      type="button"
-                      className="setting-step-btn"
+                      type='button'
+                      className='setting-step-btn'
                       onClick={() =>
                         setNumericSetting('lineHeight', settings.lineHeight - 1, 24, 12, 100)
                       }
-                      aria-label="Decrease line height"
+                      aria-label='Decrease line height'
                     >
                       <ChevronDown size={11} />
                     </button>
@@ -428,8 +428,8 @@ export function EditorPane({
               </div>
 
               <div className={`setting-row ${isSettingModified('minimap') ? 'modified' : ''}`}>
-                <span className="setting-label">
-                  <span className="setting-material-icon" aria-hidden="true">
+                <span className='setting-label'>
+                  <span className='setting-material-icon' aria-hidden='true'>
                     picture_in_picture_alt
                   </span>
                   {t('settings.minimap')}
@@ -438,7 +438,7 @@ export function EditorPane({
                   className={`toggle-switch ${settings.minimap ? 'active' : ''}`}
                   onClick={() => setSettings({ ...settings, minimap: !settings.minimap })}
                 >
-                  <span className="toggle-icon">
+                  <span className='toggle-icon'>
                     {settings.minimap ? (
                       <Check size={12} strokeWidth={3} />
                     ) : (
@@ -451,8 +451,8 @@ export function EditorPane({
               <div
                 className={`setting-row ${isSettingModified('showCommandBar') ? 'modified' : ''}`}
               >
-                <span className="setting-label">
-                  <span className="setting-material-icon" aria-hidden="true">
+                <span className='setting-label'>
+                  <span className='setting-material-icon' aria-hidden='true'>
                     search
                   </span>
                   {t('settings.showCommandBar')}
@@ -463,7 +463,7 @@ export function EditorPane({
                     setSettings({ ...settings, showCommandBar: !settings.showCommandBar })
                   }
                 >
-                  <span className="toggle-icon">
+                  <span className='toggle-icon'>
                     {settings.showCommandBar ? (
                       <Check size={12} strokeWidth={3} />
                     ) : (
@@ -476,8 +476,8 @@ export function EditorPane({
               <div
                 className={`setting-row ${isSettingModified('enableDiscordMarkdown') ? 'modified' : ''}`}
               >
-                <span className="setting-label">
-                  <span className="setting-material-icon" aria-hidden="true">
+                <span className='setting-label'>
+                  <span className='setting-material-icon' aria-hidden='true'>
                     chat
                   </span>
                   {t('settings.enableDiscordMarkdown')}
@@ -491,7 +491,7 @@ export function EditorPane({
                     })
                   }
                 >
-                  <span className="toggle-icon">
+                  <span className='toggle-icon'>
                     {settings.enableDiscordMarkdown ? (
                       <Check size={12} strokeWidth={3} />
                     ) : (
@@ -501,8 +501,8 @@ export function EditorPane({
                 </div>
               </div>
               <div className={`setting-row ${isSettingModified('wordWrap') ? 'modified' : ''}`}>
-                <span className="setting-label">
-                  <span className="setting-material-icon" aria-hidden="true">
+                <span className='setting-label'>
+                  <span className='setting-material-icon' aria-hidden='true'>
                     wrap_text
                   </span>
                   {t('settings.wordWrap')}
@@ -516,7 +516,7 @@ export function EditorPane({
                     })
                   }
                 >
-                  <span className="toggle-icon">
+                  <span className='toggle-icon'>
                     {settings.wordWrap === 'on' ? (
                       <Check size={12} strokeWidth={3} />
                     ) : (
@@ -527,14 +527,14 @@ export function EditorPane({
               </div>
 
               <div className={`setting-row ${isSettingModified('uiFont') ? 'modified' : ''}`}>
-                <span className="setting-label">
-                  <span className="setting-material-icon" aria-hidden="true">
+                <span className='setting-label'>
+                  <span className='setting-material-icon' aria-hidden='true'>
                     text_fields
                   </span>
                   {t('settings.uiFont')}
                 </span>
                 <select
-                  className="setting-input"
+                  className='setting-input'
                   style={{ width: '260px', fontFamily: settings.uiFont }}
                   value={settings.uiFont}
                   onChange={(e) => setSettings({ ...settings, uiFont: e.target.value })}
@@ -562,14 +562,14 @@ export function EditorPane({
               </div>
 
               <div className={`setting-row ${isSettingModified('editorFont') ? 'modified' : ''}`}>
-                <span className="setting-label">
-                  <span className="setting-material-icon" aria-hidden="true">
+                <span className='setting-label'>
+                  <span className='setting-material-icon' aria-hidden='true'>
                     code
                   </span>
                   {t('settings.editorFont')}
                 </span>
                 <select
-                  className="setting-input"
+                  className='setting-input'
                   style={{ width: '260px', fontFamily: settings.uiFont }}
                   value={settings.editorFont}
                   onChange={(e) => setSettings({ ...settings, editorFont: e.target.value })}
@@ -604,11 +604,11 @@ export function EditorPane({
           </div>
         ) : (
           <>
-            <div className="editor-pane">
-              <div className="monaco-wrapper">
+            <div className='editor-pane'>
+              <div className='monaco-wrapper'>
                 <Editor
-                  height="100%"
-                  defaultLanguage="markdown"
+                  height='100%'
+                  defaultLanguage='markdown'
                   path={activeFile ? activeFile.id : '__empty__'}
                   language={activeFile ? activeFile.language || 'markdown' : 'plaintext'}
                   theme={activeTheme === 'dark' ? 'vscode-markdown-dark' : 'vscode-markdown-light'}
@@ -635,7 +635,7 @@ export function EditorPane({
                 />
                 {!activeFile && (
                   <div
-                    className="empty-state-view"
+                    className='empty-state-view'
                     style={{
                       position: 'absolute',
                       top: 0,
@@ -646,25 +646,25 @@ export function EditorPane({
                       backgroundColor: 'var(--editor-bg)',
                     }}
                   >
-                    <div className="empty-state-logo">
-                      <img src={logoImage} alt="App Logo" />
+                    <div className='empty-state-logo'>
+                      <img src={logoImage} alt='App Logo' />
                     </div>
-                    <div className="empty-state-shortcuts">
-                      <div className="shortcut-row">
-                        <span className="shortcut-label">{t('empty.showCommandPalette')}</span>
-                        <span className="shortcut-key">F1</span>
+                    <div className='empty-state-shortcuts'>
+                      <div className='shortcut-row'>
+                        <span className='shortcut-label'>{t('empty.showCommandPalette')}</span>
+                        <span className='shortcut-key'>F1</span>
                       </div>
-                      <div className="shortcut-row">
-                        <span className="shortcut-label">{t('empty.newFile')}</span>
-                        <span className="shortcut-key">Ctrl+K, N</span>
+                      <div className='shortcut-row'>
+                        <span className='shortcut-label'>{t('empty.newFile')}</span>
+                        <span className='shortcut-key'>Ctrl+K, N</span>
                       </div>
-                      <div className="shortcut-row">
-                        <span className="shortcut-label">{t('empty.openFile')}</span>
-                        <span className="shortcut-key">Ctrl+O</span>
+                      <div className='shortcut-row'>
+                        <span className='shortcut-label'>{t('empty.openFile')}</span>
+                        <span className='shortcut-key'>Ctrl+O</span>
                       </div>
-                      <div className="shortcut-row">
-                        <span className="shortcut-label">{t('empty.toggleTheme')}</span>
-                        <span className="shortcut-key">F1 &gt; Theme</span>
+                      <div className='shortcut-row'>
+                        <span className='shortcut-label'>{t('empty.toggleTheme')}</span>
+                        <span className='shortcut-key'>F1 &gt; Theme</span>
                       </div>
                     </div>
                   </div>
@@ -675,11 +675,11 @@ export function EditorPane({
             {showPreview && activeFile && (
               <>
                 <div
-                  className="resizer-x"
+                  className='resizer-x'
                   onMouseDown={startResizingPreview}
                   title={t('resizer.tooltip')}
                 />
-                <div className="preview-pane" style={{ width: previewWidth, flex: 'none' }}>
+                <div className='preview-pane' style={{ width: previewWidth, flex: 'none' }}>
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm, remarkAlert]}
                     rehypePlugins={[rehypeRaw]}
@@ -691,7 +691,7 @@ export function EditorPane({
                           <SyntaxHighlighter
                             style={activeTheme === 'dark' ? vscDarkPlus : vs}
                             language={match[1]}
-                            PreTag="div"
+                            PreTag='div'
                           >
                             {String(children).replace(/\n$/, '')}
                           </SyntaxHighlighter>
