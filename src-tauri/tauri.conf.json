@@ -1,6 +1,6 @@
 {
   "productName": "Markdown Editor",
-  "version": "1.1.31",
+  "version": "../package.json",
   "identifier": "com.zibasan.markdowneditor",
   "build": {
     "beforeDevCommand": "bun run dev:web",
@@ -29,6 +29,12 @@
     "targets": ["dmg", "nsis"],
     "icon": ["../build/icon.icns", "../build/icon.ico"],
     "copyright": "Copyright © 2026 zibasan",
-    "createUpdaterArtifacts": false
+    "createUpdaterArtifacts": false,
+    "windows": {
+      "nsis": {
+        "languages": ["ja-JP", "en-US"],
+        "displayLanguageSelector": true
+      }
+    }
   }
 }
