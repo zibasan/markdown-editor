@@ -7,6 +7,13 @@ import { bootstrapDesktopApi } from './platform/desktopApi';
 
 await bootstrapDesktopApi();
 
+// WebViewデフォルトのコンテキストメニューを無効化（Monacoエディタ内は除く）
+document.addEventListener('contextmenu', (e) => {
+  if (e.target instanceof Element && !e.target.closest('.monaco-editor')) {
+    e.preventDefault();
+  }
+});
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <App />

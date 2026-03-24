@@ -234,6 +234,52 @@ async fn install_update(_app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+#[tauri::command]
+fn show_in_folder(path: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        Command::new("explorer")
+            .args(["/select,", &path])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        Command::new("open")
+            .args(["-R", &path])
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        // path からディレクトリを取得
+        let path = std::path::Path::new(&path);
+        if let Some(parent) = path.parent() {
+            let parent_str = parent.to_string_lossy().to_string();
+            // 一般的なファイラーでのオープンを試みる
+            Command::new("xdg-open")
+                .arg(&parent_str)
+                .spawn()
+                .map_err(|e| e.to_string())?;
+        }
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn get_startup_args() -> Result<Vec<String>, String> {
+    Ok(std::env::args().collect())
+}
+
+#[tauri::command]
+fn toggle_devtools(window: tauri::WebviewWindow) {
+    if window.is_devtools_open() {
+        window.close_devtools();
+    } else {
+        window.open_devtools();
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
@@ -254,6 +300,9 @@ fn main() {
             close_window,
             download_update,
             install_update,
+            show_in_folder,
+            get_startup_args,
+            toggle_devtools,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

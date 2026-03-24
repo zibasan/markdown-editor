@@ -5,9 +5,13 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import 'remark-github-blockquote-alert/alert.css';
 import './index.css';
 import { getVersion } from '@tauri-apps/api/app';
-import { message, save } from '@tauri-apps/plugin-dialog';
-import { writeTextFile } from '@tauri-apps/plugin-fs';
-import { sendNotification } from '@tauri-apps/plugin-notification';
+import { invoke } from '@tauri-apps/api/core';
+import { message } from '@tauri-apps/plugin-dialog';
+import {
+  isPermissionGranted,
+  requestPermission,
+  sendNotification,
+} from '@tauri-apps/plugin-notification';
 import logoImage from './assets/logo.svg';
 import { EditorPane } from './components/app/EditorPane';
 import { OverlayLayer } from './components/app/OverlayLayer';
@@ -43,31 +47,6 @@ type AppContainerStyle = React.CSSProperties & {
 
 const RECENT_FILES_STORAGE_KEY = 'editor_recent_files';
 const MAX_RECENT_FILES = 10;
-
-const isAbortError = (error: unknown): error is { name: string } => {
-  return typeof error === 'object' && error !== null && 'name' in error;
-};
-
-const isFileSystemFileHandle = (value: unknown): value is FileSystemFileHandle => {
-  if (typeof value !== 'object' || value === null) {
-    return false;
-  }
-  const candidate = value as {
-    kind?: unknown;
-    name?: unknown;
-    getFile?: unknown;
-    createWritable?: unknown;
-    isSameEntry?: unknown;
-  };
-
-  return (
-    candidate.kind === 'file' &&
-    typeof candidate.name === 'string' &&
-    typeof candidate.getFile === 'function' &&
-    typeof candidate.createWritable === 'function' &&
-    typeof candidate.isSameEntry === 'function'
-  );
-};
 
 const getLanguageAliases = (lang: { aliases?: unknown }): string[] | undefined => {
   if (!Array.isArray(lang.aliases)) {
@@ -168,13 +147,17 @@ function App() {
   // Altキーで一時的にメニューバーを表示するためのフラグ (toggleモード用)
   const [isMenuBarVisibleByAlt, setIsMenuBarVisibleByAlt] = useState(false);
   // ハンバーガーメニューのコンテキストメニュー表示用
-  const [hamburgerMenu, setHamburgerMenu] = useState<{ x: number; y: number } | null>(null);
+  const [hamburgerMenu, setHamburgerMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
   // ハンバーガーメニュー内のサブメニュー表示状態 ('file' | 'edit' | 'view' | null)
   const [hamburgerSubMenu, setHamburgerSubMenu] = useState<string | null>(null);
   // メニューバー右クリック時のコンテキストメニュー
-  const [titleBarContextMenu, setTitleBarContextMenu] = useState<{ x: number; y: number } | null>(
-    null
-  );
+  const [titleBarContextMenu, setTitleBarContextMenu] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   // 設定機能のState (localStorage対応)
   const [settings, setSettings] = useState<EditorSettings>(() => {
@@ -276,6 +259,7 @@ function App() {
       language: file.language,
       sourceSignature: file.sourceSignature,
       needsSaveAs: file.needsSaveAs,
+      handle: typeof file.handle === 'string' ? file.handle : undefined,
     }));
     const state = {
       files: persistedFiles,
@@ -290,9 +274,11 @@ function App() {
   }, [isTauri, recentFiles]);
 
   // コンテキストメニュー用のState (fileIdがない場合は余白右クリック)
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; fileId?: string } | null>(
-    null
-  );
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    fileId?: string;
+  } | null>(null);
 
   // メニューバー用のState
   const [activeMenu, setActiveMenu] = useState<string | null>(null);
@@ -361,35 +347,26 @@ function App() {
   };
 
   // === 主要な操作関数 (ホイスティング対策で上部に配置) ===
-  const notifyUser = React.useCallback(
-    async (title: string, body?: string) => {
-      if (isTauri) {
+  const notifyUser = React.useCallback(async (title: string, body?: string) => {
+    try {
+      let permissionGranted = await isPermissionGranted();
+      if (!permissionGranted) {
+        const permission = await requestPermission();
+        permissionGranted = permission === 'granted';
+      }
+      if (permissionGranted) {
         sendNotification({ title, body });
-        return;
+      } else {
+        // 権限が得られなかった場合はTauriのダイアログで代替表示
+        await message(body ? `${title}\n${body}` : title, {
+          title: '通知',
+          kind: 'info',
+        });
       }
-
-      if (typeof Notification === 'undefined') {
-        alert(title);
-        return;
-      }
-
-      if (Notification.permission === 'granted') {
-        new Notification(title, body ? { body } : undefined);
-        return;
-      }
-
-      if (Notification.permission !== 'denied') {
-        const permission = await Notification.requestPermission();
-        if (permission === 'granted') {
-          new Notification(title, body ? { body } : undefined);
-          return;
-        }
-      }
-
-      alert(title);
-    },
-    [isTauri]
-  );
+    } catch (err) {
+      console.error('Notification error:', err);
+    }
+  }, []);
 
   const addRecentFile = React.useCallback(
     (filePath: string, name?: string) => {
@@ -404,10 +381,8 @@ function App() {
     },
     [isTauri]
   );
-  const rememberFileHandle = React.useCallback((handle: unknown) => {
-    if (isFileSystemFileHandle(handle)) {
-      knownFileHandlesRef.current[handle.name] = handle;
-    }
+  const rememberFileHandle = React.useCallback((_handle: unknown) => {
+    // Tauri環境ではパス(string)で管理するため、Handleオブジェクトの記録は不要
   }, []);
 
   const updateHistoryAvailability = React.useCallback((fileId: string) => {
@@ -461,17 +436,13 @@ function App() {
   }, []);
 
   const findOpenFileByHandle = React.useCallback(async (targetHandle: unknown) => {
-    if (!isFileSystemFileHandle(targetHandle)) {
-      return null;
-    }
+    // Tauri環境では handle はパスの string で管理しているため一致検索のみ行う
+    if (typeof targetHandle !== 'string') return null;
+
     for (const openFile of filesRef.current) {
-      if (!isFileSystemFileHandle(openFile.handle)) continue;
-      try {
-        if (await openFile.handle.isSameEntry(targetHandle)) {
-          return openFile;
-        }
-      } catch {
-        // 権限状態により isSameEntry が失敗する場合は同一でないものとして扱う
+      if (typeof openFile.handle !== 'string') continue;
+      if (openFile.handle === targetHandle) {
+        return openFile;
       }
     }
 
@@ -533,174 +504,61 @@ function App() {
     [activateFile, addRecentFile, findOpenFileByLegacyContent, findOpenFileByPath]
   );
 
-  const openFilesFromPayloads = React.useCallback(
-    (payloads: Array<{ path: string; name: string; content: string }>) => {
-      if (payloads.length === 0) return;
-      const timeBase = Date.now();
-      let sequence = 0;
-      let lastNewId = '';
-      let firstExistingId = '';
-      setFiles((prev) => {
-        const next = [...prev];
-        payloads.forEach((payload) => {
-          const samePathFile = next.find(
-            (openFile) => typeof openFile.handle === 'string' && openFile.handle === payload.path
-          );
-          if (samePathFile) {
-            if (!firstExistingId) firstExistingId = samePathFile.id;
-            return;
-          }
-          const legacyMatchedFile = next.find(
-            (openFile) =>
-              openFile.name === payload.name &&
-              openFile.savedContent === payload.content &&
-              !openFile.handle &&
-              !openFile.sourceSignature
-          );
-          if (legacyMatchedFile) {
-            if (!firstExistingId) firstExistingId = legacyMatchedFile.id;
-            return;
-          }
-          const newFileId = `${timeBase}-${sequence++}`;
-          const newFile: EditorFile = {
-            id: newFileId,
-            name: payload.name,
-            content: payload.content,
-            savedContent: payload.content,
-            language: getLanguageFromFilename(payload.name),
-            handle: payload.path,
-          };
-          next.push(newFile);
-          lastNewId = newFileId;
-          addRecentFile(payload.path, payload.name);
-        });
-        return next;
-      });
-      const targetId = lastNewId || firstExistingId;
-      if (targetId) {
-        activateFile(targetId);
-      }
-      setActiveMenu(null);
-    },
-    [activateFile, addRecentFile]
-  );
-
   const openFileFromPath = React.useCallback(
     async (filePath: string) => {
-      if (!isTauri || !window.electronAPI?.openFilePath) return;
+      if (!filePath) return;
       try {
-        const payload = await window.electronAPI.openFilePath(filePath);
-        if (!payload) {
+        const payload = await invoke<{
+          path: string;
+          name: string;
+          content: string;
+        } | null>('open_file_path', { filePath });
+        if (payload) {
+          openFileFromPayload(payload);
+        } else {
           await notifyUser(t('status.openRecentFail') || '最近使ったファイルを開けませんでした。');
-
-          return;
         }
-        openFileFromPayload(payload);
-      } catch {
+      } catch (err) {
+        console.error(err);
         await notifyUser(t('status.openRecentFail') || '最近使ったファイルを開けませんでした。');
       }
     },
-    [isTauri, notifyUser, openFileFromPayload, t]
+    [notifyUser, openFileFromPayload, t]
   );
 
   const openFileFromDisk = React.useCallback(async () => {
     try {
-      if (isTauri && window.electronAPI?.openFileDialog) {
-        const payload = await window.electronAPI.openFileDialog();
-        if (!payload) return;
-        openFileFromPayload(payload);
+      const payload = await invoke<{
+        path: string;
+        name: string;
+        content: string;
+      } | null>('open_file_dialog');
+      if (!payload) return;
 
-        return;
-      }
-      // @ts-expect-error: File System Access API
-      const [handle] = await window.showOpenFilePicker({
-        types: [
-          {
-            description: 'Markdown / Text Files',
-            accept: {
-              'text/markdown': ['.md'],
-              'text/plain': ['.txt'],
-            },
-          },
-        ],
-        multiple: false,
-      });
-
-      const file = await handle.getFile();
-      rememberFileHandle(handle);
-      const sourceSignature = getFileSourceSignature(file);
-      const sameHandleFile = await findOpenFileByHandle(handle);
-      if (sameHandleFile) {
-        activateFile(sameHandleFile.id);
-        setActiveMenu(null);
-
-        return;
-      }
-      const sameSignatureFile = findOpenFileBySignature(sourceSignature);
-      if (sameSignatureFile) {
-        activateFile(sameSignatureFile.id);
-        setActiveMenu(null);
-
-        return;
-      }
-
-      const content = await file.text();
-      const legacyMatchedFile = findOpenFileByLegacyContent(file.name, content);
-      if (legacyMatchedFile) {
-        activateFile(legacyMatchedFile.id);
-        setActiveMenu(null);
-
-        return;
-      }
-      const newFileId = Date.now().toString();
-
-      const newFile: EditorFile = {
-        id: newFileId,
-        name: file.name,
-        content: content,
-        savedContent: content,
-        sourceSignature: sourceSignature,
-        language: getLanguageFromFilename(file.name),
-        handle: handle,
-      };
-
-      setFiles((prev) => [...prev, newFile]);
-      activateFile(newFileId);
-      setActiveMenu(null);
+      openFileFromPayload(payload);
     } catch (err: unknown) {
-      if (!isAbortError(err) || err.name !== 'AbortError') {
-        console.error(err);
-        notifyUser(t('status.errorOpenFile') || 'ファイルの読み込みに失敗しました。');
-      }
+      console.error(err);
+      notifyUser(t('status.errorOpenFile') || 'ファイルの読み込みに失敗しました。');
     }
-  }, [
-    activateFile,
-    findOpenFileByHandle,
-    findOpenFileByLegacyContent,
-    findOpenFileBySignature,
-    isTauri,
-    notifyUser,
-    openFileFromPayload,
-    rememberFileHandle,
-    t,
-  ]);
+  }, [notifyUser, openFileFromPayload, t]);
 
   const openFolderFromDisk = React.useCallback(
-    async (mode: 'open' | 'create' = 'open') => {
-      if (!isTauri || !window.electronAPI?.openFolderDialog) return;
+    async (_mode: 'open' | 'create' = 'open') => {
       try {
-        const payload = await window.electronAPI.openFolderDialog(mode);
+        const payload = await invoke<{
+          folderPath: string;
+          files: { path: string; name: string; content: string }[];
+        } | null>('open_folder_dialog', { mode: _mode });
         if (!payload) return;
+
         setOpenedFolderPath(payload.folderPath);
-        if (payload.files.length > 0) {
-          openFilesFromPayloads(payload.files);
-        }
+        // FIXME: フォルダ内のファイル一括読み込みは必要に応じて受け取った files をパースして実装する
       } catch (err) {
         console.error(err);
         notifyUser(t('status.errorOpenFile') || 'ファイルの読み込みに失敗しました。');
       }
     },
-    [isTauri, notifyUser, openFilesFromPayloads, t]
+    [notifyUser, t]
   );
 
   const createFolderFromDisk = React.useCallback(() => {
@@ -715,34 +573,46 @@ function App() {
   );
 
   const registerFileAssociation = React.useCallback(async () => {
-    if (!isTauri || !window.electronAPI?.registerFileAssociation) return;
-    const success = await window.electronAPI.registerFileAssociation();
-    await notifyUser(
-      success
-        ? t('status.registerAssociationSuccess') || '関連付けを登録しました。'
-        : t('status.registerAssociationFail') || '関連付けの登録に失敗しました。'
-    );
-  }, [isTauri, notifyUser, t]);
+    if (!isTauri) return;
+    try {
+      await invoke('register_file_association');
+      notifyUser('関連付けを登録しました。');
+    } catch (err) {
+      console.error(err);
+      notifyUser('関連付けの登録に失敗しました。管理者権限が必要な場合があります。');
+    }
+  }, [notifyUser, isTauri]);
 
   const unregisterFileAssociation = React.useCallback(async () => {
-    if (!isTauri || !window.electronAPI?.unregisterFileAssociation) return;
-    const success = await window.electronAPI.unregisterFileAssociation();
-    await notifyUser(
-      success
-        ? t('status.unregisterAssociationSuccess') || '関連付けを解除しました。'
-        : t('status.unregisterAssociationFail') || '関連付けの解除に失敗しました。'
-    );
-  }, [isTauri, notifyUser, t]);
+    if (!isTauri) return;
+    try {
+      await invoke('unregister_file_association');
+      notifyUser('関連付けを解除しました。');
+    } catch (err) {
+      console.error(err);
+      notifyUser('関連付けの解除に失敗しました。管理者権限が必要な場合があります。');
+    }
+  }, [notifyUser, isTauri]);
 
   useEffect(() => {
-    if (!isTauri || !window.electronAPI?.onOpenFile) return;
-    const unsubscribe = window.electronAPI.onOpenFile((filePath: string) => {
-      openFileFromPath(filePath);
-    });
-
-    return () => {
-      if (unsubscribe) unsubscribe();
-    };
+    // Tauri環境でOSから直接ファイルを開いた際（関連付けによる起動）の引数を処理
+    if (!isTauri) return;
+    invoke<string[]>('get_startup_args')
+      .then((args) => {
+        if (args && args.length > 1) {
+          // Rustの std::env::args は args[0] に実行ファイルパスを含む
+          const potentialPath = args[args.length - 1];
+          // 開発時のフラグ（--等）やデバッグパスを避ける簡易チェック
+          if (
+            potentialPath &&
+            !potentialPath.startsWith('-') &&
+            !potentialPath.includes('target\\debug')
+          ) {
+            openFileFromPath(potentialPath);
+          }
+        }
+      })
+      .catch((err) => console.error('Failed to parse startup args:', err));
   }, [isTauri, openFileFromPath]);
 
   const openNewFilePalette = React.useCallback(() => {
@@ -760,114 +630,41 @@ function App() {
   const handleSave = React.useCallback(async () => {
     if (!activeFile) return;
 
-    // Electron環境（アプリとして起動しているか）を判定
-    const isTauri = '__TAURI_INTERNALS__' in window;
-
     try {
-      if (isTauri) {
-        try {
-          if (typeof activeFile.handle === 'string' && activeFile.handle !== '') {
-            // 既にパスを持っていれば上書き保存
-            await writeTextFile(activeFile.handle, activeFile.content);
-            // (Stateの更新や通知などの完了処理をここに書く)
-          } else {
-            // パスがなければ「名前を付けて保存」ダイアログを出す
-            const filePath = await save({
-              defaultPath: activeFile.name,
-              filters: [{ name: 'Markdown', extensions: ['md', 'txt'] }],
-            });
-            if (filePath) {
-              await writeTextFile(filePath, activeFile.content);
-              // (Stateの更新や通知などの完了処理をここに書く)
-            }
-          }
-        } catch (err) {
-          console.error('Tauri save error:', err);
-        }
-      } else {
-        // ==========================================
-        // 【Web（GitHub Pages）版の保存処理】 ※今までのコードそのまま
-        // ==========================================
-        let handle = activeFile.handle;
-        if (!isFileSystemFileHandle(handle)) {
-          const knownHandle = knownFileHandlesRef.current[activeFile.name];
-          if (knownHandle) {
-            handle = knownHandle;
-          }
-        }
+      // main.rsに実装された `save_file` コマンドで安全に保存する
+      // 文字列のパスがある場合のみ defaultPath に渡す
+      const defaultPath =
+        typeof activeFile.handle === 'string' && activeFile.handle !== ''
+          ? activeFile.handle
+          : undefined;
+      const savedPath = await invoke<string | null>('save_file', {
+        content: activeFile.content,
+        defaultPath,
+      });
 
-        if (!isFileSystemFileHandle(handle)) {
-          try {
-            // @ts-expect-error: File System Access API
-            handle = await window.showSaveFilePicker({
-              suggestedName: activeFile.name,
-              types: [
-                {
-                  description: 'Markdown / Text Files',
-                  accept: {
-                    'text/markdown': ['.md'],
-                    'text/plain': ['.txt'],
-                  },
-                },
-              ],
-            });
-          } catch (err: unknown) {
-            if (isAbortError(err) && err.name === 'AbortError') return;
-            throw err;
-          }
-        }
+      if (!savedPath) return; // キャンセルされた
 
-        if (!isFileSystemFileHandle(handle)) {
-          throw new Error('Failed to resolve file handle');
-        }
-
-        let fileExists = true;
-        try {
-          await handle.getFile();
-        } catch {
-          fileExists = false;
-        }
-
-        const writable = await handle.createWritable();
-        await writable.write(activeFile.content);
-        await writable.close();
-
-        let savedSourceSignature = activeFile.sourceSignature;
-        try {
-          const savedFile = await handle.getFile();
-          savedSourceSignature = getFileSourceSignature(savedFile);
-        } catch {
-          // do nothing
-        }
-
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === activeFile.id
-              ? {
-                  ...f,
-                  savedContent: f.content,
-                  name: handle.name,
-                  handle: handle,
-                  sourceSignature: savedSourceSignature,
-                  needsSaveAs: false,
-                }
-              : f
-          )
-        );
-
-        if (fileExists) {
-          notifyUser(`${handle.name} ${t('status.saved') || 'に保存しました。'}`);
-        } else {
-          notifyUser(`${t('status.fileNotFound')} ${handle.name}`);
-        }
-        rememberFileHandle(handle);
-        setActiveMenu(null);
-      }
-    } catch (err: unknown) {
-      console.error(err);
+      setFiles((prev) =>
+        prev.map((f) =>
+          f.id === activeFile.id
+            ? {
+                ...f,
+                savedContent: f.content,
+                name: savedPath.split(/[\\/]/).pop() || activeFile.name,
+                handle: savedPath,
+                needsSaveAs: false,
+              }
+            : f
+        )
+      );
+      notifyUser(
+        `${savedPath.split(/[\\/]/).pop() || activeFile.name} ${t('status.saved') || 'に保存しました。'}`
+      );
+    } catch (err) {
+      console.error('Tauri save error:', err);
       notifyUser(t('status.errorSaveFile') || '保存に失敗しました。');
     }
-  }, [activeFile, notifyUser, rememberFileHandle, t]);
+  }, [activeFile, notifyUser, t]);
 
   // handleSaveRef を更新（Monaco Editor の addAction が常に最新の handleSave を参照するため）
   useEffect(() => {
@@ -886,69 +683,50 @@ function App() {
     let fileName = newFileNameInput.trim();
     if (!fileName) {
       setShowNewFilePalette(false);
-
       return;
     }
 
-    // 拡張子のチェック
     const hasExtension = fileName.includes('.');
     if (hasExtension) {
       const ext = fileName.split('.').pop()?.toLowerCase();
       if (ext !== 'md' && ext !== 'txt') {
         notifyUser('エラー: .md または .txt 拡張子のみサポートされています。');
-
         return;
       }
     } else {
-      // 拡張子がない場合は .md を自動付与
       fileName += '.md';
     }
 
     setShowNewFilePalette(false);
     setNewFileNameInput('');
 
-    // ローカルにファイルを作成するための保存ダイアログを表示
     try {
-      // @ts-expect-error: File System Access API
-      const handle = await window.showSaveFilePicker({
-        suggestedName: fileName,
-        types: [
-          {
-            description: 'Markdown / Text Files',
-            accept: {
-              'text/markdown': ['.md'],
-              'text/plain': ['.txt'],
-            },
-          },
-        ],
+      const savedPath = await invoke<string | null>('save_file', {
+        content: '',
+        defaultPath: fileName,
       });
 
-      // 空の内容でローカルファイルを作成
-      const writable = await handle.createWritable();
-      await writable.write('');
-      await writable.close();
-      rememberFileHandle(handle);
+      if (!savedPath) return;
 
       const newFileId = Date.now().toString();
+      const displayName = savedPath.split(/[\\/]/).pop() || fileName;
       const newFile: EditorFile = {
         id: newFileId,
-        name: handle.name,
+        name: displayName,
         content: '',
         savedContent: '',
-        language: getLanguageFromFilename(handle.name),
-        handle: handle,
+        language: getLanguageFromFilename(displayName),
+        handle: savedPath,
       };
       setFiles((prev) => [...prev, newFile]);
       activateFile(newFileId);
-      notifyUser(`${handle.name} ${t('status.created') || 'を作成しました。'}`);
+      notifyUser(`${displayName} ${t('status.created') || 'を作成しました。'}`);
       if (editorRef.current) {
         editorRef.current.focus();
       }
-    } catch (err: unknown) {
-      if (!isAbortError(err) || err.name !== 'AbortError') {
-        console.error(err);
-        notifyUser(t('status.errorSaveFile') || 'ファイルの作成に失敗しました。');
-      }
+    } catch (err) {
+      console.error(err);
+      notifyUser(t('status.errorSaveFile') || 'ファイルの作成に失敗しました。');
     }
   };
 
@@ -1052,6 +830,23 @@ function App() {
         e.preventDefault();
         handleSave();
       }
+
+      // Ctrl+R: 再読み込み
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        window.location.reload();
+      }
+
+      // Ctrl+Shift+I / F12: 開発者ツール
+      if (
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'i') ||
+        e.key === 'F12'
+      ) {
+        e.preventDefault();
+        if (isTauri) {
+          invoke('toggle_devtools').catch(console.error);
+        }
+      }
     };
 
     window.addEventListener('keydown', handleGlobalKeyDown);
@@ -1064,6 +859,7 @@ function App() {
     triggerCommandPalette,
     openNewFilePalette,
     resetChord,
+    isTauri,
   ]); // isChordWaiting や handleSave, openFileFromDisk の変化を検知する必要がある
 
   // === ペインリサイズ用のイベントハンドラ定義 ===
@@ -1382,7 +1178,11 @@ function App() {
         // 見出し(# H1 等)、リスト(- , 1.)のマーカー
         { token: 'keyword.md', foreground: '569cd6' },
         // テーブルヘッダー
-        { token: 'keyword.table.header.md', foreground: '4ec9b0', fontStyle: 'bold' },
+        {
+          token: 'keyword.table.header.md',
+          foreground: '4ec9b0',
+          fontStyle: 'bold',
+        },
         { token: 'keyword.table.left.md', foreground: '808080' },
         { token: 'keyword.table.middle.md', foreground: '808080' },
         { token: 'keyword.table.right.md', foreground: '808080' },
@@ -1424,7 +1224,11 @@ function App() {
       inherit: true,
       rules: [
         { token: 'keyword.md', foreground: '0000ff' },
-        { token: 'keyword.table.header.md', foreground: '267f99', fontStyle: 'bold' },
+        {
+          token: 'keyword.table.header.md',
+          foreground: '267f99',
+          fontStyle: 'bold',
+        },
         { token: 'keyword.table.left.md', foreground: '808080' },
         { token: 'keyword.table.middle.md', foreground: '808080' },
         { token: 'keyword.table.right.md', foreground: '808080' },
@@ -1931,27 +1735,18 @@ function App() {
       onConfirm: async () => {
         // 保存して閉じる
         try {
-          const handle = fileToClose.handle;
-          if (isFileSystemFileHandle(handle)) {
-            let closeFileExists = true;
-            try {
-              await handle.getFile();
-            } catch {
-              closeFileExists = false;
-            }
+          const defaultPath =
+            typeof fileToClose.handle === 'string' && fileToClose.handle !== ''
+              ? fileToClose.handle
+              : undefined;
+          const savedPath = await invoke<string | null>('save_file', {
+            content: fileToClose.content,
+            defaultPath,
+          });
 
-            const writable = await handle.createWritable();
-            await writable.write(fileToClose.content);
-            await writable.close();
+          if (!savedPath) return; // キャンセルされた
 
-            if (closeFileExists) {
-              notifyUser(`${fileToClose.name} ${t('status.saved')}`);
-            } else {
-              notifyUser(`${t('status.fileNotFound')} ${handle.name}`);
-            }
-          } else {
-            handleExport(fileToClose.content);
-          }
+          notifyUser(`${savedPath.split(/[\\/]/).pop() || fileToClose.name} ${t('status.saved')}`);
         } catch (err) {
           console.error(err);
           notifyUser(t('status.errorSaveFile') || '保存に失敗しました。');
@@ -2001,6 +1796,23 @@ function App() {
     }
     setContextMenu(null);
   };
+
+  // メニューの「エクスプローラーで開く」
+  const handleContextReveal = React.useCallback(async () => {
+    if (contextMenu && contextMenu.fileId) {
+      const targetFile = filesRef.current.find((f) => f.id === contextMenu.fileId);
+      if (targetFile && typeof targetFile.handle === 'string' && targetFile.handle !== '') {
+        try {
+          await invoke('show_in_folder', { path: targetFile.handle });
+        } catch (err) {
+          console.error(err);
+        }
+      } else {
+        notifyUser('まだローカルに保存されていないファイルです');
+      }
+    }
+    setContextMenu(null);
+  }, [contextMenu, notifyUser]);
 
   // メニューの「削除」
   const handleContextDelete = () => {
@@ -2070,21 +1882,6 @@ function App() {
     if (position) {
       editor.setPosition(position);
     }
-  };
-
-  const handleExport = (contentOverride?: string) => {
-    if (!activeFile) return;
-    // エクスポートは「指定された内容」または「現在の内容」を出力
-    const contentToExport = contentOverride !== undefined ? contentOverride : activeFile.content;
-    const blob = new Blob([contentToExport], { type: 'text/markdown' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = activeFile.name;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
   };
 
   const filteredLanguages = useMemo(() => {
@@ -2234,10 +2031,13 @@ function App() {
   const showAboutDialog = React.useCallback(async () => {
     if (isTauri) {
       const version = await getVersion();
-      await message(`Markdown Editor\nVersion ${version}`, {
-        title: t('about.title'),
-        kind: 'info',
-      });
+      await message(
+        `Markdown Editor\nVersion ${version}\nCopyright © 2026 zibasan\nBuilt with Tauri\n\nGithub: https://github.com/zibasan/markdown-editor`,
+        {
+          title: t('about.title'),
+          kind: 'info',
+        }
+      );
       return;
     }
     alert('Markdown Editor');
@@ -2474,6 +2274,7 @@ function App() {
           setContextMenu={setContextMenu}
           filesLength={files.length}
           handleContextOpen={handleContextOpen}
+          handleContextReveal={handleContextReveal}
           handleContextDelete={handleContextDelete}
           openNewFilePalette={openNewFilePalette}
           openFileFromDisk={openFileFromDisk}

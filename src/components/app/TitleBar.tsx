@@ -368,6 +368,33 @@ export function TitleBar({
                           </div>
                         </div>
                       </div>
+                      <div className='menu-dropdown-separator'></div>
+                      <div
+                        className='menu-dropdown-item'
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          window.location.reload();
+                          setActiveMenu(null);
+                        }}
+                      >
+                        <span>{t('menu.help.reload')}</span>
+                        <span className='menu-dropdown-shortcut'>Ctrl+R</span>
+                      </div>
+                      <div
+                        className='menu-dropdown-item'
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (isTauri) {
+                            import('@tauri-apps/api/core').then(({ invoke }) => {
+                              invoke('toggle_devtools').catch(console.error);
+                            });
+                          }
+                          setActiveMenu(null);
+                        }}
+                      >
+                        <span>{t('menu.help.devtools')}</span>
+                        <span className='menu-dropdown-shortcut'>Ctrl+Shift+I</span>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -456,7 +483,7 @@ export function TitleBar({
             position: 'fixed',
             top: titleBarContextMenu.y,
             left: titleBarContextMenu.x,
-            zIndex: 10001,
+            zIndex: 100001,
           }}
           onClick={(e) => e.stopPropagation()}
         >

@@ -13,6 +13,7 @@ interface OverlayLayerProps {
   setContextMenu: (menu: ContextMenuState | null) => void;
   filesLength: number;
   handleContextOpen: () => void;
+  handleContextReveal: () => void;
   handleContextDelete: () => void;
   openNewFilePalette: () => void;
   openFileFromDisk: () => void;
@@ -27,6 +28,7 @@ export function OverlayLayer({
   setContextMenu,
   filesLength,
   handleContextOpen,
+  handleContextReveal,
   handleContextDelete,
   openNewFilePalette,
   openFileFromDisk,
@@ -62,6 +64,9 @@ export function OverlayLayer({
               <>
                 <div className='context-menu-item' onClick={handleContextOpen}>
                   {t('context.open')}
+                </div>
+                <div className='context-menu-item' onClick={handleContextReveal}>
+                  {t('context.revealInExplorer')}
                 </div>
                 <div className='context-menu-separator' />
                 <div

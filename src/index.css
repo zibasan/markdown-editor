@@ -1077,12 +1077,31 @@ select,
   word-wrap: break-word;
 }
 
+.preview-pane h1 {
+  font-size: 2em;
+}
+.preview-pane h2 {
+  font-size: 1.5em;
+}
 .preview-pane h1,
 .preview-pane h2 {
   border-bottom: 1px solid var(--toolbar-border);
   padding-bottom: 0.3em;
   margin-top: 24px;
   font-weight: 600;
+}
+.preview-pane h3 {
+  font-size: 1.25em;
+}
+.preview-pane h4 {
+  font-size: 1em;
+}
+.preview-pane h5 {
+  font-size: 0.875em;
+}
+.preview-pane h6 {
+  font-size: 0.85em;
+  color: var(--activity-icon);
 }
 .preview-pane h3,
 .preview-pane h4,
@@ -1255,7 +1274,7 @@ select,
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 9999;
+  z-index: 99999;
 }
 
 .context-menu {
@@ -1266,7 +1285,7 @@ select,
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
   min-width: 180px;
   padding: 4px 0;
-  z-index: 10000;
+  z-index: 100000;
   font-size: 13px;
   color: var(--text-color);
   animation: contextMenuFadeIn 0.1s ease-out;
@@ -1329,7 +1348,7 @@ select,
   transform: translateX(6px);
   pointer-events: none;
   flex-direction: column;
-  z-index: 10001;
+  z-index: 100001;
   transition:
     opacity 0.12s ease,
     transform 0.12s ease,

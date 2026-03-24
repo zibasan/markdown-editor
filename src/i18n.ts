@@ -123,6 +123,7 @@ const ja: TranslationDict = {
   'context.delete': '削除',
   'context.newFile': '新しいファイル',
   'context.openFile': 'ファイルを開く',
+  'context.revealInExplorer': 'エクスプローラーで開く',
 
   // === 確認パレット ===
   'confirm.saveAndClose': '保存して閉じる',
@@ -242,6 +243,9 @@ const ja: TranslationDict = {
     'アップデートをダウンロード中にエラーが発生しました。\nアップデートログを以下のファイルに保存しました:',
   'updateErrorDialog.msg2': 'エラー内容:',
 
+  'menu.help.reload': '再読み込み',
+  'menu.help.devtools': '開発者ツールの切り替え',
+
   'about.title': 'Markdown Editorについて',
 };
 
@@ -272,6 +276,8 @@ const en: TranslationDict = {
   'menu.help.association': 'File Association',
   'menu.help.association.register': 'Associate .md Files',
   'menu.help.association.unregister': 'Remove Association',
+  'menu.help.reload': 'Reload',
+  'menu.help.devtools': 'Toggle Developer Tools',
   'menu.help.update': 'Restart to update',
   'recentPalette.title': 'Recent Files',
   'recentPalette.placeholder': 'Search by name or path...',
@@ -359,6 +365,7 @@ const en: TranslationDict = {
   'context.delete': 'Delete',
   'context.newFile': 'New File',
   'context.openFile': 'Open File',
+  'context.revealInExplorer': 'Reveal in Explorer',
 
   // === 確認パレット ===
   'confirm.saveAndClose': 'Save and Close',
