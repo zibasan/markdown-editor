@@ -1,3 +1,4 @@
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 use rfd::{FileDialog, MessageDialog, MessageLevel};
 use serde::Serialize;
 use std::fs;
@@ -37,6 +38,13 @@ fn to_file_payload(path: &Path) -> Result<FilePayload, String> {
 
 #[tauri::command]
 fn save_file(content: String, default_path: Option<String>) -> Result<Option<String>, String> {
+    if let Some(path_str) = &default_path {
+        let path = Path::new(path_str);
+        if path.is_absolute() {
+            fs::write(path, &content).map_err(|e| e.to_string())?;
+            return Ok(Some(path_str.clone()));
+        }
+    }
     let mut dialog = FileDialog::new().add_filter("Markdown / Text", &["md", "txt"]);
 
     if let Some(path) = default_path {
@@ -122,11 +130,15 @@ fn open_folder_dialog(mode: Option<String>) -> Result<Option<FolderPayload>, Str
 }
 
 #[tauri::command]
-fn show_about() -> bool {
+fn show_about(app: tauri::AppHandle) -> bool {
+    let version = app.package_info().version.to_string();
     MessageDialog::new()
         .set_level(MessageLevel::Info)
         .set_title("Markdown Editor")
-        .set_description("Markdown Editor\nVersion 1.1.31\nCopyright © 2026 zibasan")
+        .set_description(&format!(
+            "Markdown Editor\nVersion {}\nCopyright © 2026 zibasan",
+            version
+        ))
         .show();
 
     true
@@ -209,12 +221,26 @@ fn close_window(window: tauri::Window) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn install_update() -> Result<(), String> {
+async fn download_update(version: String) -> Result<(), String> {
+    // フロントエンドにバージョン情報をログ出力
+    println!("Update {} is available and ready to install", version);
+    Ok(())
+}
+
+#[tauri::command]
+async fn install_update(_app: tauri::AppHandle) -> Result<(), String> {
+    // Tauriの updater プラグインで自動的に更新がインストールされる
+    // フロントエンド側で relaunch を呼び出して再起動
     Ok(())
 }
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_fs::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .invoke_handler(tauri::generate_handler![
             save_file,
             open_file_dialog,
@@ -226,6 +252,7 @@ fn main() {
             minimize_window,
             toggle_maximize_window,
             close_window,
+            download_update,
             install_update,
         ])
         .run(tauri::generate_context!())

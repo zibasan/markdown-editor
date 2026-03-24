@@ -1,4 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
+import { relaunch } from '@tauri-apps/plugin-process';
+import { check } from '@tauri-apps/plugin-updater';
 import type { ElectronAPI } from '../types';
 
 const isTauriRuntime = () => {
@@ -18,6 +20,8 @@ const notifyFallback = async (title: string, body?: string) => {
     }
   }
 };
+
+let updateDownloadedCallback: ((version: string) => void) | null = null;
 
 const createTauriElectronApiAdapter = (): ElectronAPI => {
   return {
@@ -62,11 +66,13 @@ const createTauriElectronApiAdapter = (): ElectronAPI => {
     close: () => {
       void invoke('close_window');
     },
-    onUpdateDownloaded: () => {
-      // Tauri updater wiring will be added in a follow-up iteration.
+    onUpdateDownloaded: (callback: (version: string) => void) => {
+      updateDownloadedCallback = callback;
     },
     installUpdate: async () => {
-      await invoke('install_update');
+      await invoke<void>('install_update');
+      // 更新インストール後、アプリケーションを再起動
+      await relaunch();
     },
   };
 };
@@ -77,4 +83,23 @@ export const bootstrapDesktopApi = async () => {
   if (!isTauriRuntime()) return;
 
   window.electronAPI = createTauriElectronApiAdapter();
+
+  // 自動更新チェックを開始
+  await checkForUpdatesAndDownload();
+};
+
+const checkForUpdatesAndDownload = async () => {
+  try {
+    const update = await check();
+    if (update) {
+      // 更新をダウンロード
+      await invoke('download_update', { version: update.version });
+      // ダウンロード完了をコールバック経由で通知
+      if (updateDownloadedCallback) {
+        updateDownloadedCallback(update.version);
+      }
+    }
+  } catch (error) {
+    console.error('Failed to check for updates:', error);
+  }
 };

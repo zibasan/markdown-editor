@@ -4,6 +4,10 @@ import type { editor, IPosition, IRange, languages } from 'monaco-editor';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import 'remark-github-blockquote-alert/alert.css';
 import './index.css';
+import { getVersion } from '@tauri-apps/api/app';
+import { message, save } from '@tauri-apps/plugin-dialog';
+import { writeTextFile } from '@tauri-apps/plugin-fs';
+import { sendNotification } from '@tauri-apps/plugin-notification';
 import logoImage from './assets/logo.svg';
 import { EditorPane } from './components/app/EditorPane';
 import { OverlayLayer } from './components/app/OverlayLayer';
@@ -112,7 +116,7 @@ function App() {
   const [historyStateByFile, setHistoryStateByFile] = useState<
     Record<string, { canUndo: boolean; canRedo: boolean }>
   >({});
-  const isElectron = typeof window !== 'undefined' && window.electronAPI !== undefined;
+  const isTauri = typeof window !== 'undefined' && window.electronAPI !== undefined;
 
   const [files, setFiles] = useState<EditorFile[]>(() => readPersistedEditorState().files);
   const filesRef = useRef<EditorFile[]>([]);
@@ -120,7 +124,7 @@ function App() {
     () => readPersistedEditorState().activeFileId
   );
   const [recentFiles, setRecentFiles] = useState<RecentFileEntry[]>(() => {
-    if (!isElectron) return [];
+    if (!isTauri) return [];
     try {
       const raw = localStorage.getItem(RECENT_FILES_STORAGE_KEY);
       if (!raw) return [];
@@ -281,9 +285,9 @@ function App() {
   }, [activeFileId, files]);
 
   useEffect(() => {
-    if (!isElectron) return;
+    if (!isTauri) return;
     localStorage.setItem(RECENT_FILES_STORAGE_KEY, JSON.stringify(recentFiles));
-  }, [isElectron, recentFiles]);
+  }, [isTauri, recentFiles]);
 
   // コンテキストメニュー用のState (fileIdがない場合は余白右クリック)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; fileId?: string } | null>(
@@ -359,21 +363,18 @@ function App() {
   // === 主要な操作関数 (ホイスティング対策で上部に配置) ===
   const notifyUser = React.useCallback(
     async (title: string, body?: string) => {
-      if (isElectron && window.electronAPI?.notify) {
-        window.electronAPI.notify(title, body);
-
+      if (isTauri) {
+        sendNotification({ title, body });
         return;
       }
 
       if (typeof Notification === 'undefined') {
         alert(title);
-
         return;
       }
 
       if (Notification.permission === 'granted') {
         new Notification(title, body ? { body } : undefined);
-
         return;
       }
 
@@ -381,19 +382,18 @@ function App() {
         const permission = await Notification.requestPermission();
         if (permission === 'granted') {
           new Notification(title, body ? { body } : undefined);
-
           return;
         }
       }
 
       alert(title);
     },
-    [isElectron]
+    [isTauri]
   );
 
   const addRecentFile = React.useCallback(
     (filePath: string, name?: string) => {
-      if (!isElectron || !filePath) return;
+      if (!isTauri || !filePath) return;
       const displayName = name || filePath.split(/[\\/]/).pop() || filePath;
       setRecentFiles((prev) => {
         const filtered = prev.filter((entry) => entry.path !== filePath);
@@ -402,7 +402,7 @@ function App() {
         return next.slice(0, MAX_RECENT_FILES);
       });
     },
-    [isElectron]
+    [isTauri]
   );
   const rememberFileHandle = React.useCallback((handle: unknown) => {
     if (isFileSystemFileHandle(handle)) {
@@ -587,7 +587,7 @@ function App() {
 
   const openFileFromPath = React.useCallback(
     async (filePath: string) => {
-      if (!isElectron || !window.electronAPI?.openFilePath) return;
+      if (!isTauri || !window.electronAPI?.openFilePath) return;
       try {
         const payload = await window.electronAPI.openFilePath(filePath);
         if (!payload) {
@@ -600,12 +600,12 @@ function App() {
         await notifyUser(t('status.openRecentFail') || '最近使ったファイルを開けませんでした。');
       }
     },
-    [isElectron, notifyUser, openFileFromPayload, t]
+    [isTauri, notifyUser, openFileFromPayload, t]
   );
 
   const openFileFromDisk = React.useCallback(async () => {
     try {
-      if (isElectron && window.electronAPI?.openFileDialog) {
+      if (isTauri && window.electronAPI?.openFileDialog) {
         const payload = await window.electronAPI.openFileDialog();
         if (!payload) return;
         openFileFromPayload(payload);
@@ -678,7 +678,7 @@ function App() {
     findOpenFileByHandle,
     findOpenFileByLegacyContent,
     findOpenFileBySignature,
-    isElectron,
+    isTauri,
     notifyUser,
     openFileFromPayload,
     rememberFileHandle,
@@ -687,7 +687,7 @@ function App() {
 
   const openFolderFromDisk = React.useCallback(
     async (mode: 'open' | 'create' = 'open') => {
-      if (!isElectron || !window.electronAPI?.openFolderDialog) return;
+      if (!isTauri || !window.electronAPI?.openFolderDialog) return;
       try {
         const payload = await window.electronAPI.openFolderDialog(mode);
         if (!payload) return;
@@ -700,7 +700,7 @@ function App() {
         notifyUser(t('status.errorOpenFile') || 'ファイルの読み込みに失敗しました。');
       }
     },
-    [isElectron, notifyUser, openFilesFromPayloads, t]
+    [isTauri, notifyUser, openFilesFromPayloads, t]
   );
 
   const createFolderFromDisk = React.useCallback(() => {
@@ -715,27 +715,27 @@ function App() {
   );
 
   const registerFileAssociation = React.useCallback(async () => {
-    if (!isElectron || !window.electronAPI?.registerFileAssociation) return;
+    if (!isTauri || !window.electronAPI?.registerFileAssociation) return;
     const success = await window.electronAPI.registerFileAssociation();
     await notifyUser(
       success
         ? t('status.registerAssociationSuccess') || '関連付けを登録しました。'
         : t('status.registerAssociationFail') || '関連付けの登録に失敗しました。'
     );
-  }, [isElectron, notifyUser, t]);
+  }, [isTauri, notifyUser, t]);
 
   const unregisterFileAssociation = React.useCallback(async () => {
-    if (!isElectron || !window.electronAPI?.unregisterFileAssociation) return;
+    if (!isTauri || !window.electronAPI?.unregisterFileAssociation) return;
     const success = await window.electronAPI.unregisterFileAssociation();
     await notifyUser(
       success
         ? t('status.unregisterAssociationSuccess') || '関連付けを解除しました。'
         : t('status.unregisterAssociationFail') || '関連付けの解除に失敗しました。'
     );
-  }, [isElectron, notifyUser, t]);
+  }, [isTauri, notifyUser, t]);
 
   useEffect(() => {
-    if (!isElectron || !window.electronAPI?.onOpenFile) return;
+    if (!isTauri || !window.electronAPI?.onOpenFile) return;
     const unsubscribe = window.electronAPI.onOpenFile((filePath: string) => {
       openFileFromPath(filePath);
     });
@@ -743,7 +743,7 @@ function App() {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [isElectron, openFileFromPath]);
+  }, [isTauri, openFileFromPath]);
 
   const openNewFilePalette = React.useCallback(() => {
     setNewFileNameInput('');
@@ -761,48 +761,29 @@ function App() {
     if (!activeFile) return;
 
     // Electron環境（アプリとして起動しているか）を判定
-    const isElectron = window.electronAPI !== undefined;
+    const isTauri = '__TAURI_INTERNALS__' in window;
 
     try {
-      if (isElectron) {
-        // ==========================================
-        // 【Electron（デスクトップアプリ）版の保存処理】
-        // ==========================================
-
-        // すでに保存済みのパスがあればそれを、なければ現在のファイル名をデフォルトパスにする
-        // （※Electron版では handle プロパティにパス文字列を保持する運用とします）
-        const defaultPath =
-          typeof activeFile.handle === 'string' ? activeFile.handle : activeFile.name;
-
-        // preload.ts 経由でメインプロセスに保存を依頼
-        // (注意: 現在の main.ts の実装だと毎回ダイアログが出ます。後でサイレント上書きに改修可能です)
-        const savedPath = await window.electronAPI!.saveFile(activeFile.content, defaultPath);
-
-        // キャンセルされた場合は何もしない
-        if (!savedPath) return;
-
-        // Windowsの場合は \、Macの場合は / でパスを区切ってファイル名を抽出
-        const fileName = savedPath.split(/[\\/]/).pop() || activeFile.name;
-
-        // 保存成功時のState更新
-        setFiles((prev) =>
-          prev.map((f) =>
-            f.id === activeFile.id
-              ? {
-                  ...f,
-                  savedContent: f.content,
-                  name: fileName,
-                  handle: savedPath, // Electron版では handle にファイルパスの文字列を入れる
-                  needsSaveAs: false,
-                  // sourceSignatureは一旦据え置き
-                }
-              : f
-          )
-        );
-
-        addRecentFile(savedPath, fileName);
-        notifyUser(`${fileName} ${t('status.saved') || 'を保存しました。'}`);
-        setActiveMenu(null);
+      if (isTauri) {
+        try {
+          if (typeof activeFile.handle === 'string' && activeFile.handle !== '') {
+            // 既にパスを持っていれば上書き保存
+            await writeTextFile(activeFile.handle, activeFile.content);
+            // (Stateの更新や通知などの完了処理をここに書く)
+          } else {
+            // パスがなければ「名前を付けて保存」ダイアログを出す
+            const filePath = await save({
+              defaultPath: activeFile.name,
+              filters: [{ name: 'Markdown', extensions: ['md', 'txt'] }],
+            });
+            if (filePath) {
+              await writeTextFile(filePath, activeFile.content);
+              // (Stateの更新や通知などの完了処理をここに書く)
+            }
+          }
+        } catch (err) {
+          console.error('Tauri save error:', err);
+        }
       } else {
         // ==========================================
         // 【Web（GitHub Pages）版の保存処理】 ※今までのコードそのまま
@@ -886,7 +867,7 @@ function App() {
       console.error(err);
       notifyUser(t('status.errorSaveFile') || '保存に失敗しました。');
     }
-  }, [activeFile, addRecentFile, notifyUser, rememberFileHandle, t]);
+  }, [activeFile, notifyUser, rememberFileHandle, t]);
 
   // handleSaveRef を更新（Monaco Editor の addAction が常に最新の handleSave を参照するため）
   useEffect(() => {
@@ -1716,7 +1697,7 @@ function App() {
       id: 'open-folder-action',
       label: t('cmdPalette.customOpt.openFolder'),
       run: function () {
-        if (isElectron) {
+        if (isTauri) {
           openFolderFromDisk();
         }
       },
@@ -1727,7 +1708,7 @@ function App() {
       id: 'open-recent-file-action',
       label: t('cmdPalette.customOpt.openRecent'),
       run: function () {
-        if (isElectron) {
+        if (isTauri) {
           setShowRecentPalette(true);
         }
       },
@@ -2251,13 +2232,16 @@ function App() {
   };
 
   const showAboutDialog = React.useCallback(async () => {
-    if (isElectron && window.electronAPI?.showAbout) {
-      await window.electronAPI.showAbout();
-
+    if (isTauri) {
+      const version = await getVersion();
+      await message(`Markdown Editor\nVersion ${version}`, {
+        title: t('about.title'),
+        kind: 'info',
+      });
       return;
     }
     alert('Markdown Editor');
-  }, [isElectron]);
+  }, [t, isTauri]);
 
   const toggleTheme = () => {
     if (theme === 'system') setTheme('light');
@@ -2348,7 +2332,7 @@ function App() {
         theme={theme}
         toggleTheme={toggleTheme}
         activeFileName={activeFile?.name || 'Markdown Editor'}
-        isElectron={isElectron}
+        isTauri={isTauri}
         titleBarContextMenu={titleBarContextMenu}
         setTitleBarContextMenu={setTitleBarContextMenu}
         onTitleBarContextMenu={(e) => {
@@ -2415,7 +2399,7 @@ function App() {
           createFolderFromDisk={createFolderFromDisk}
           openRecentFile={openRecentFile}
           recentFiles={recentFiles}
-          isElectron={isElectron}
+          isTauri={isTauri}
           hasActiveFile={hasActiveFile}
           handleSave={handleSave}
           triggerUndo={triggerUndo}

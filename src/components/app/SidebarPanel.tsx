@@ -39,7 +39,7 @@ interface SidebarPanelProps {
   createFolderFromDisk: () => void;
   openRecentFile: (filePath: string) => void;
   recentFiles: RecentFileEntry[];
-  isElectron: boolean;
+  isTauri: boolean;
   hasActiveFile: boolean;
   handleSave: () => void;
   triggerUndo: () => void;
@@ -85,7 +85,7 @@ export function SidebarPanel({
   createFolderFromDisk,
   openRecentFile,
   recentFiles,
-  isElectron,
+  isTauri,
   hasActiveFile,
   handleSave,
   triggerUndo,
@@ -179,7 +179,7 @@ export function SidebarPanel({
                         Ctrl+O
                       </span>
                     </div>
-                    {isElectron && (
+                    {isTauri && (
                       <div
                         className='context-menu-item'
                         onClick={() => {
@@ -207,7 +207,7 @@ export function SidebarPanel({
                         Ctrl+S
                       </span>
                     </div>
-                    {isElectron && (
+                    {isTauri && (
                       <>
                         <div className='context-menu-separator' />
                         <div className='context-menu-item has-submenu'>
@@ -353,7 +353,7 @@ export function SidebarPanel({
                   </div>
                 )}
 
-                {isElectron && (
+                {isTauri && (
                   <>
                     <div
                       className={`context-menu-item has-submenu ${hamburgerSubMenu === 'help' ? 'active' : ''}`}
@@ -549,7 +549,7 @@ export function SidebarPanel({
                   <button className='explorer-empty-btn' onClick={openFileFromDisk}>
                     {t('sidebar.empty.openFile')}
                   </button>
-                  {isElectron && (
+                  {isTauri && (
                     <button className='explorer-empty-btn' onClick={createFolderFromDisk}>
                       {t('sidebar.empty.createFolder')}
                     </button>

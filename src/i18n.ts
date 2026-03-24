@@ -241,6 +241,8 @@ const ja: TranslationDict = {
   'updateErrorDialog.msg1':
     'アップデートをダウンロード中にエラーが発生しました。\nアップデートログを以下のファイルに保存しました:',
   'updateErrorDialog.msg2': 'エラー内容:',
+
+  'about.title': 'Markdown Editorについて',
 };
 
 // 英語の翻訳辞書
@@ -475,6 +477,8 @@ const en: TranslationDict = {
   'updateErrorDialog.msg1':
     'An error occurred while downloading the update.\nThe update log has been saved to the following file:',
   'updateErrorDialog.msg2': 'Error Message:',
+
+  'about.title': 'About Markdown Editor',
 };
 
 // 翻訳辞書のマップ

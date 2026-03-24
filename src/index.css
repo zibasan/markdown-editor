@@ -181,11 +181,11 @@ select,
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 6px;
   padding: 4px 16px;
-  width: 400px;
+  width: 38vw;
   max-width: 50vw;
   box-sizing: border-box;
   color: var(--text-color);
-  font-size: 13px;
+  font-size: 12px;
   font-family: var(--app-font);
   cursor: pointer;
   display: flex;
@@ -193,6 +193,7 @@ select,
   align-items: center;
   gap: 6px;
   transition: background-color 0.2s;
+  height: 25px;
 }
 [data-theme="light"] .command-palette-trigger {
   background-color: rgba(0, 0, 0, 0.05);
@@ -1862,28 +1863,6 @@ select,
   margin-right: 8px;
 }
 
-/* =========================================
-   Electron版（WCO有効時）専用のスタイル
-   ========================================= */
-
-.app-titlebar.is-electron {
-  /* タイトルバーの何もない部分はドラッグでウィンドウを動かせるようにする */
-  -webkit-app-region: drag;
-  user-select: none;
-
-  /* 右側にOSネイティブボタン用のスペース（約140px）を確保（Web版には影響させない！） */
-  padding: 0 140px 0 10px !important;
-}
-
-/* クリックしたい要素には確実に no-drag を設定し、OSからクリック判定を取り戻す */
-.app-titlebar.is-electron .menu-bar,
-.app-titlebar.is-electron .theme-toggle-btn,
-.app-titlebar.is-electron .update-btn,
-.app-titlebar.is-electron .command-palette-trigger,
-.app-titlebar.is-electron .menu-item {
-  -webkit-app-region: no-drag;
-}
-
 .update-btn {
   background: transparent;
   border: none;
@@ -1939,4 +1918,53 @@ select,
   ); /* ここに表示したい文字を入れる */
   color: rgba(162, 162, 162, 0.5);
   pointer-events: none; /* マウスイベントを貫通させる */
+}
+
+.window-controls {
+  display: flex;
+  height: 30px; /* タイトルバーの高さ(30px)に合わせる */
+}
+
+.window-control-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  width: 35px;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  /* transition: background-color 0.1s; */
+}
+
+/* 通常のホバー */
+.window-control-btn:hover {
+  background-color: rgba(128, 128, 128, 0.2);
+}
+
+/* 閉じるボタン専用のホバー（Windows風の赤） */
+.window-control-btn.close-btn:hover {
+  background-color: #e81123;
+  color: white;
+}
+
+.app-titlebar.is-tauri {
+  padding-right: 0 !important;
+}
+
+.titlebar-right {
+  gap: 8px; /* テーマボタンとウィンドウコントロールの間に少し隙間を空ける */
+}
+
+.titlebar-separator {
+  width: 1px;
+  height: 16px; /* アイコンのサイズ(16px)に合わせると綺麗に馴染みます */
+  background-color: rgba(
+    128,
+    128,
+    128,
+    0.3
+  ); /* ダークテーマ/ライトテーマ両方で馴染む半透明のグレー */
+  margin: 0 4px; /* 左右に少し余白を持たせる */
 }

@@ -1,6 +1,6 @@
-import { Check, Download, Monitor, Moon, Search, Sun } from 'lucide-react';
+import { getCurrentWindow } from '@tauri-apps/api/window';
+import { Check, Download, Minus, Monitor, Moon, Search, Square, Sun, X } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
-
 import type { EditorSettings } from '../../types';
 
 type Theme = 'system' | 'light' | 'dark';
@@ -34,7 +34,7 @@ interface TitleBarProps {
   theme: Theme;
   toggleTheme: () => void;
   activeFileName: string;
-  isElectron: boolean;
+  isTauri: boolean;
   titleBarContextMenu: { x: number; y: number } | null;
   setTitleBarContextMenu: (menu: { x: number; y: number } | null) => void;
   onTitleBarContextMenu: (e: React.MouseEvent<HTMLElement>) => void;
@@ -69,7 +69,7 @@ export function TitleBar({
   theme,
   toggleTheme,
   activeFileName,
-  isElectron,
+  isTauri,
   titleBarContextMenu,
   setTitleBarContextMenu,
   onTitleBarContextMenu,
@@ -80,18 +80,32 @@ export function TitleBar({
 
   // 【追加】ダウンロード完了通知を受け取る
   useEffect(() => {
-    if (isElectron && window.electronAPI?.onUpdateDownloaded) {
+    if (isTauri && window.electronAPI?.onUpdateDownloaded) {
       window.electronAPI.onUpdateDownloaded((version: string) => {
         setUpdateReadyVersion(version);
       });
     }
-  }, [isElectron]);
+  }, [isTauri]);
 
   return (
     <>
       <header
-        className={`app-titlebar ${isElectron ? 'is-electron' : ''}`}
+        className={`app-titlebar ${isTauri ? 'is-tauri' : ''}`}
         onContextMenu={onTitleBarContextMenu}
+        onPointerDown={(e) => {
+          if (!isTauri) {
+            return;
+          }
+
+          if (
+            e.target instanceof Element &&
+            e.target.closest('button, .menu-item, .menu-dropdown, .theme-toggle-btn')
+          ) {
+            return;
+          }
+
+          getCurrentWindow().startDragging();
+        }}
       >
         <div className='titlebar-section'>
           <div style={{ padding: '0 8px', display: 'flex' }}>
@@ -131,7 +145,7 @@ export function TitleBar({
                       <span>{t('menu.file.open')}</span>
                       <span className='menu-dropdown-shortcut'>Ctrl+O</span>
                     </div>
-                    {isElectron && (
+                    {isTauri && (
                       <div
                         className='menu-dropdown-item'
                         onClick={(e) => {
@@ -155,7 +169,7 @@ export function TitleBar({
                       <span>{t('menu.file.save')}</span>
                       <span className='menu-dropdown-shortcut'>Ctrl+S</span>
                     </div>
-                    {isElectron && (
+                    {isTauri && (
                       <>
                         <div className='menu-dropdown-separator'></div>
                         <div className='menu-dropdown-item has-submenu'>
@@ -289,7 +303,7 @@ export function TitleBar({
                 )}
               </div>
 
-              {isElectron && (
+              {isTauri && (
                 <div
                   className={`menu-item ${activeMenu === 'help' ? 'active' : ''}`}
                   onClick={() => setActiveMenu(activeMenu === 'help' ? null : 'help')}
@@ -406,6 +420,32 @@ export function TitleBar({
               <Moon size={16} />
             )}
           </button>
+
+          {isTauri && (
+            <>
+              <div className='titlebar-separator'></div>
+              <div className='window-controls'>
+                <button
+                  className='window-control-btn'
+                  onClick={() => getCurrentWindow().minimize()}
+                >
+                  <Minus size={16} strokeWidth={2} />
+                </button>
+                <button
+                  className='window-control-btn'
+                  onClick={() => getCurrentWindow().toggleMaximize()}
+                >
+                  <Square size={14} strokeWidth={2} />
+                </button>
+                <button
+                  className='window-control-btn close-btn'
+                  onClick={() => getCurrentWindow().close()}
+                >
+                  <X size={16} strokeWidth={2} />
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </header>
 

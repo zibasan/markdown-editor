@@ -17,17 +17,25 @@
         "height": 900,
         "minWidth": 960,
         "minHeight": 640,
-        "resizable": true
+        "resizable": true,
+        "decorations": false
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "capabilities": ["window-controls"]
     }
   },
   "bundle": {
     "active": true,
     "targets": ["dmg", "nsis"],
-    "icon": ["../build/icon.icns", "../build/icon.ico"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
     "copyright": "Copyright © 2026 zibasan",
     "createUpdaterArtifacts": false,
     "windows": {
@@ -35,6 +43,12 @@
         "languages": ["Japanese", "English"],
         "displayLanguageSelector": true
       }
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": ["https://example.com/update/{{target}}/{{current_version}}"],
+      "pubkey": "YOUR_PUBLIC_KEY_HERE"
     }
   }
 }
