@@ -2100,7 +2100,7 @@ dependencies = [
 
 [[package]]
 name = "markdown_editor"
-version = "1.3.2"
+version = "1.3.3"
 dependencies = [
  "rfd 0.15.4",
  "serde",

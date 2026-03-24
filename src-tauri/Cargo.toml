@@ -1,6 +1,6 @@
 [package]
 name = "markdown_editor"
-version = "1.3.2"
+version = "1.3.3"
 description = "Markdown Editor powered by Tauri"
 authors = ["zibasan"]
 license = "MIT"
