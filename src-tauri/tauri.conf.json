@@ -48,7 +48,7 @@
     "createUpdaterArtifacts": true,
     "windows": {
       "nsis": {
-        "languages": ["Japanese", "English"],
+        "languages": ["English", "Japanese"],
         "displayLanguageSelector": true,
         "customLanguageFiles": {
           "Japanese": "locales/ja-JP.nsh"

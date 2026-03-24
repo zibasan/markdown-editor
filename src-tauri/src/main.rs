@@ -3,7 +3,6 @@ use rfd::{FileDialog, MessageDialog, MessageLevel};
 use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
-#[cfg(target_os = "windows")]
 use std::process::Command;
 
 #[derive(Debug, Serialize)]
