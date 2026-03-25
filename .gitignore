@@ -31,3 +31,6 @@ release/
 # Tauri build output
 src-tauri/target/
 src-tauri/gen/
+
+# Notes file (local) for when development resumes
+REBUILDING.md
